@@ -1,0 +1,16 @@
+# Jangan push script & arsip lokal
+*.bat
+*.zip
+
+# Backup SQL lokal (cukup via zip, jangan ke GitHub)
+db_backups/
+
+# File upload user (jaga struktur + proteksi)
+uploads/bukti/*
+uploads/logo/*
+!uploads/bukti/.htaccess
+!uploads/logo/.htaccess
+
+# OS / editor
+Thumbs.db
+.DS_Store

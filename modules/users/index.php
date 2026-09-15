@@ -1,0 +1,19 @@
+<?php
+$rows=$pdo->query("SELECT * FROM users ORDER BY id DESC")->fetchAll();
+?>
+<button onclick="userForm(0)" title="Tambah User" class="bg-emerald-700 hover:bg-emerald-800 text-white w-10 h-10 rounded-2xl text-sm mb-3 no-print shadow"><i class="fa-solid fa-user-plus"></i></button>
+<div class="bg-white rounded shadow overflow-auto"><table class="w-full text-sm min-w-[700px]"><thead><tr class="bg-gray-50 border-b text-left"><th class="p-2">Nama</th><th class="p-2">Username</th><th class="p-2">Role</th><th class="p-2">Status</th><th class="p-2">Last Login</th><th class="p-2 no-print">Aksi</th></tr></thead><tbody>
+<?php foreach($rows as $r):?><tr class="border-b"><td class="p-2"><?=Security::e($r['nama'])?></td><td class="p-2"><?=Security::e($r['username'])?></td><td class="p-2"><?=Security::e($r['role'])?></td><td class="p-2"><?=Helper::badgeStatus($r['status'])?></td><td class="p-2"><?=Security::e($r['last_login']??'-')?></td>
+<td class="p-2 no-print"><button onclick='userForm(<?=$r['id']?>,<?=json_encode($r,JSON_HEX_APOS|JSON_HEX_QUOT)?>)' title="Edit" class="btn-ic btn-edit"><i class="fa-solid fa-pen-to-square"></i></button> <button onclick="userReset(<?=$r['id']?>)" title="Reset Password" class="btn-ic btn-key"><i class="fa-solid fa-key"></i></button> <button onclick="userDel(<?=$r['id']?>)" title="Hapus" class="btn-ic btn-del"><i class="fa-solid fa-trash-can"></i></button></td></tr><?php endforeach;?></tbody></table></div>
+<script>
+function userForm(id,d){d=d||{role:'operator',status:'aktif'};openModal(`<div class="flex justify-between items-center mb-3"><b>${id?'Edit':'Tambah'} User</b><button type="button" onclick="closeModal()" title="Tutup" class="w-8 h-8 rounded-full bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div>
+<form onsubmit="userSave(event,${id})" class="text-sm space-y-2"><input name="nama" required placeholder="Nama" value="${d.nama||''}" class="w-full border rounded p-2"><input name="username" required placeholder="Username" value="${d.username||''}" class="w-full border rounded p-2">
+<div class="grid grid-cols-2 gap-2"><select name="role" class="border rounded p-2">${['superadmin','kepala_madrasah','bendahara','operator','viewer'].map(r=>`<option ${d.role===r?'selected':''}>${r}</option>`).join('')}</select>
+<select name="status" class="border rounded p-2"><option ${d.status==='aktif'?'selected':''}>aktif</option><option ${d.status==='nonaktif'?'selected':''}>nonaktif</option></select></div>
+<input name="email" placeholder="Email" value="${d.email||''}" class="w-full border rounded p-2"><input name="no_hp" placeholder="No HP" value="${d.no_hp||''}" class="w-full border rounded p-2">
+${id?'':'<input type="password" name="password" required minlength="6" placeholder="Password min 6" class="w-full border rounded p-2">'}
+<button class="w-full bg-emerald-700 text-white rounded p-2 font-bold">Simpan</button></form>`);}
+async function userSave(e,id){e.preventDefault();const f=new FormData(e.target);const d={act:'user_save',id};f.forEach((v,k)=>d[k]=v);const j=await api('x',d);if(j.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else err(j.msg);}
+async function userReset(id){if(!await ask('Reset password ke admin123?','User wajib ganti password setelah login.','Ya, Reset'))return;const j=await api('x',{act:'user_reset',id});if(j.ok){ok(j.msg);}else err(j.msg);}
+async function userDel(id){if(!await ask('Hapus user ini?','Data tidak bisa dikembalikan.','Ya, Hapus'))return;const j=await api('x',{act:'user_delete',id});if(j.ok){ok('Dihapus');setTimeout(()=>location.reload(),800);}else err(j.msg);}
+</script>
