@@ -1,6 +1,7 @@
 # Jangan push script & arsip lokal
 *.bat
 *.zip
+rkam-backup.zip
 
 # Backup SQL lokal (cukup via zip, jangan ke GitHub)
 db_backups/
