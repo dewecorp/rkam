@@ -14,6 +14,7 @@ public static function rupiah($n){return 'Rp '.number_format((float)$n,0,',','.'
 public static function num($v){$v=preg_replace('/[^0-9.\-]/','',(string)$v);return $v===''||!is_numeric($v)?0:(float)$v;}
 public static function int($v){return (int)self::num($v);}
 public static function money($v){return round(self::num($v),2);}
+public static function vol($v){$n=self::num($v);if($n<0)$n=0;return (int)round($n);}
 public static function romawi($m){$r=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];return $r[max(1,min(12,(int)$m))-1];}
 public static function json($d,$c=200){http_response_code($c);header('Content-Type: application/json');echo json_encode($d);exit;}
 public static function onlyPost(){if($_SERVER['REQUEST_METHOD']!=='POST'){self::json(['ok'=>false,'msg'=>'Metode tidak valid'],405);}}

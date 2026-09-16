@@ -1,5 +1,5 @@
 -- =============================================
--- RKAM Madrasah v1.0 | MySQL 5.7+ / MariaDB 10.2+
+-- SIRKAM v1.0 | MySQL 5.7+ / MariaDB 10.2+
 -- Charset utf8mb4 | Engine InnoDB
 -- Cara pakai: buat db rkam_db lalu import file ini
 -- =============================================
@@ -392,7 +392,7 @@ INSERT INTO users (nama,username,password,role,email,status,must_change_password
 ON DUPLICATE KEY UPDATE role=VALUES(role);
 
 INSERT INTO app_settings (skey,svalue) VALUES
-('app_name','RKAM Madrasah'),
+('app_name','SIRKAM'),
 ('kode_madrasah','MI-SF'),
 ('format_nomor','{no}/RKAM/{kode}/{romawi}/{tahun}'),
 ('max_upload_mb','5'),

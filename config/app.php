@@ -1,5 +1,5 @@
 <?php
-define('APP_NAME','RKAM Madrasah');
+define('APP_NAME','SIRKAM');
 define('APP_VERSION','1.0.0');
 define('BASE_URL','/rkam/');
 define('UPLOAD_DIR',__DIR__.'/../uploads/bukti/');

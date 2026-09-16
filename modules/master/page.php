@@ -8,7 +8,7 @@ $bid=$pdo->query("SELECT * FROM bidang WHERE status='aktif'")->fetchAll();
 $jb=$pdo->query("SELECT * FROM jenis_belanja")->fetchAll();
 $bidMap=[];foreach($bid as $b)$bidMap[$b['id']]=$b['nama_bidang'];
 $jbMap=[];foreach($jb as $j)$jbMap[$j['id']]=$j['nama'];
-function cellVal($tab,$c,$r,$bidMap,$jbMap){$v=$r[$c]??'';if($c==='bidang_id')return $bidMap[$v]??'-';if($c==='jenis_belanja_id')return $jbMap[$v]??'-';return $v;}
+function cellVal($tab,$c,$r,$bidMap,$jbMap){$v=$r[$c]??'';if($c==='bidang_id')return $bidMap[$v]??'-';if($c==='jenis_belanja_id')return $jbMap[$v]??'-';if($c==='status'||$c==='prioritas')return Helper::titleCase($v);if(in_array($c,['tanggal_mulai','tanggal_selesai','waktu_pelaksanaan'])&&$v)return Helper::tglIndo($v);return $v;}
 ?>
 <div class="flex flex-wrap items-center gap-2 mb-4 no-print">
 <div class="font-extrabold text-emerald-900">Master <?=$tabs[$tab]?></div>
@@ -20,21 +20,21 @@ function cellVal($tab,$c,$r,$bidMap,$jbMap){$v=$r[$c]??'';if($c==='bidang_id')re
 <?php foreach($cols[$tab] as $c=>$lbl):?><td class="p-2"><?=Security::e(cellVal($tab,$c,$r,$bidMap,$jbMap))?></td><?php endforeach;?>
 <td class="p-2 whitespace-nowrap no-print"><button onclick='masterForm(<?=$r['id']?>,<?=json_encode($r,JSON_HEX_APOS|JSON_HEX_QUOT)?>)' title="Edit" class="btn-ic btn-edit"><i class="fa-solid fa-pen-to-square"></i></button> <button onclick="masterDel(<?=$r['id']?>)" title="Hapus" class="btn-ic btn-del"><i class="fa-solid fa-trash-can"></i></button></td></tr><?php endforeach;?></tbody></table><?php endif;?></div>
 <script>
-const TAB='<?=$tab?>',BID=<?=json_encode($bid)?>,JB=<?=json_encode($jb)?>;
+const TAB='<?=$tab?>',BID=<?=json_encode($bid)?>,JB=<?=json_encode($jb)?>,SATL=<?=json_encode($pdo->query("SELECT * FROM satuan WHERE status='aktif' ORDER BY nama_satuan")->fetchAll())?>;
 function fld(n,v,l,type){return `<div class="mb-2"><label class="text-xs font-bold" style="text-transform:capitalize">${l}</label><input type="${type||'text'}" name="${n}" value="${(v??'').toString().replaceAll('"','')}" class="w-full border rounded p-2 mt-1"></div>`;}
 function selFld(n,v,l,opts){return `<div class="mb-2"><label class="text-xs font-bold" style="text-transform:capitalize">${l}</label><select name="${n}" class="w-full border rounded p-2 mt-1">${opts}</select></div>`;}
 function masterForm(id,d){d=d||{};let h=`<div class="flex justify-between items-center mb-3"><b>${id?'Edit':'Tambah'} <?=$tabs[$tab]?></b><button type="button" onclick="closeModal()" title="Tutup" class="w-8 h-8 rounded-full bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div><form onsubmit="masterSave(event,${id})">`;
 const LBL={kode:'Kode',nama_bidang:'Nama Bidang',nama_sumber_dana:'Nama Sumber Dana',nama:'Nama',nama_satuan:'Nama Satuan',nama_rekening:'Nama Rekening',nama_kegiatan:'Nama Kegiatan',tahun:'Tahun',kelompok:'Kelompok',keterangan:'Keterangan',bidang_id:'Bidang',jenis_belanja_id:'Jenis Belanja',status:'Status',tanggal_mulai:'Tanggal Mulai',tanggal_selesai:'Tanggal Selesai',prioritas:'Prioritas'};
 const lb=k=>LBL[k]||k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-const c={bidang:['kode','nama_bidang'],sumber_dana:['kode','nama_sumber_dana'],jenis_belanja:['kode','nama'],satuan:['kode','nama_satuan'],rekening:['kode','nama_rekening','kelompok'],kegiatan:['kode','nama_kegiatan'],tahun_anggaran:['tahun']}[TAB]||[];
+const c={bidang:['nama_bidang'],sumber_dana:['nama_sumber_dana'],jenis_belanja:['nama'],satuan:['nama_satuan'],rekening:['nama_rekening','kelompok'],kegiatan:['nama_kegiatan'],tahun_anggaran:['tahun']}[TAB]||[];
 c.forEach(k=>{h+=fld(k,d[k],lb(k),k==='tahun'?'number':'text');});
-if(TAB==='kegiatan'){h+=selFld('bidang_id',d.bidang_id,'Bidang',`<option value="">-</option>${BID.map(b=>`<option value="${b.id}" ${d.bidang_id==b.id?'selected':''}>${b.nama_bidang}</option>`).join('')}`);}
+if(TAB==='kegiatan'){h+=selFld('bidang_id',d.bidang_id,'Bidang',`<option value="">- Pilih Bidang -</option>${BID.map(b=>`<option value="${b.id}" ${d.bidang_id==b.id?'selected':''}>${b.nama_bidang}</option>`).join('')}`)+fld('volume',d.volume??1,'Volume','number')+selFld('satuan_id',d.satuan_id||'','Satuan',`<option value="">- Pilih Satuan -</option>${SATL.map(s=>`<option value="${s.id}" ${d.satuan_id==s.id?'selected':''}>${s.nama_satuan}</option>`).join('')}`)+fld('waktu_pelaksanaan',d.waktu_pelaksanaan,'Waktu Pelaksanaan','date')+fld('penanggung_jawab',d.penanggung_jawab,'Penanggung Jawab')+fld('sasaran',d.sasaran,'Sasaran')+fld('tujuan',d.tujuan,'Tujuan')+fld('indikator',d.indikator,'Indikator');}
 if(TAB==='rekening'){h+=selFld('jenis_belanja_id',d.jenis_belanja_id,'Jenis Belanja',`<option value="">-</option>${JB.map(b=>`<option value="${b.id}" ${d.jenis_belanja_id==b.id?'selected':''}>${b.nama}</option>`).join('')}`);}
 if(['bidang','sumber_dana','jenis_belanja','satuan','rekening','kegiatan'].includes(TAB)){h+=fld('keterangan',d.keterangan,'Keterangan');}
 if(TAB==='tahun_anggaran'){h+=fld('tanggal_mulai',d.tanggal_mulai,'Tanggal Mulai','date')+fld('tanggal_selesai',d.tanggal_selesai,'Tanggal Selesai','date')+fld('keterangan',d.keterangan,'Keterangan');}
-if(['bidang','sumber_dana','jenis_belanja','satuan','rekening','kegiatan','tahun_anggaran'].includes(TAB)){const st=d.status||'aktif';h+=selFld('status',st,'Status',`<option ${st==='aktif'?'selected':''}>aktif</option><option ${st==='nonaktif'?'selected':''}>nonaktif</option>${TAB==='tahun_anggaran'?'<option '+(st==='draft'?'selected':'')+'>draft</option><option '+(st==='selesai'?'selected':'')+'>selesai</option><option '+(st==='dikunci'?'selected':'')+'>dikunci</option>':''}`);}
-if(TAB==='kegiatan'){h+=selFld('prioritas',d.prioritas||'sedang','Prioritas',['rendah','sedang','tinggi','mendesak'].map(p=>`<option ${d.prioritas===p?'selected':''}>${p}</option>`).join(''));}
-h+=`<button class="w-full bg-emerald-700 text-white rounded p-2 font-bold">Simpan</button></form>`;openModal(h);}
+if(['bidang','sumber_dana','jenis_belanja','satuan','rekening','kegiatan','tahun_anggaran'].includes(TAB)){const st=(d.status||'aktif').toLowerCase();const tc=s=>s.charAt(0).toUpperCase()+s.slice(1);const opt=v=>`<option value="${v}" ${st===v?'selected':''}>${tc(v)}</option>`;let so=opt('aktif')+opt('nonaktif');if(TAB==='tahun_anggaran')so+=opt('draft')+opt('selesai')+opt('dikunci');h+=selFld('status',st,'Status',so);}
+if(TAB==='kegiatan'){h+=selFld('prioritas',d.prioritas||'sedang','Prioritas',['rendah','sedang','tinggi','mendesak'].map(p=>`<option value="${p}" ${d.prioritas===p?'selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join(''));}
+h+=`<button class="w-full bg-emerald-700 text-white rounded p-2 font-bold">Simpan</button></form>`;openModal(h,'sm');}
 async function masterSave(e,id){e.preventDefault();const f=new FormData(e.target);const d={act:'master_save',table:TAB,id};f.forEach((v,k)=>d[k]=v);const j=await api('x',d);if(j.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else err(j.msg||'Gagal');}
 async function masterDel(id){if(!await ask('Hapus data ini?','Batal bila dipakai relasi lain.','Ya, Hapus'))return;const j=await api('x',{act:'master_delete',table:TAB,id});if(j.ok){ok('Dihapus');setTimeout(()=>location.reload(),800);}else err(j.msg||'Gagal');}
 </script>

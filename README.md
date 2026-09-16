@@ -1,4 +1,4 @@
-# RKAM Madrasah v1.0 — PHP Native + MySQL + Tailwind
+# SIRKAM v1.0 — PHP Native + MySQL + Tailwind
 
 ## 1. Syarat
 - PHP 8.1+ (ext: `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`)

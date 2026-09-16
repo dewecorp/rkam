@@ -20,21 +20,21 @@ let h=`<div class="flex justify-between items-center mb-3"><b>${id?'Edit':'Tamba
 <form onsubmit="realSave(event,${id})" class="text-sm grid md:grid-cols-2 gap-2" enctype="multipart/form-data" id="fReal">
 <div class="md:col-span-2"><label class="text-xs font-bold">Kegiatan *</label><select name="rkam_id" class="w-full border rounded p-2">${RK.map(k=>`<option value="${k.id}" ${d.rkam_id==k.id?'selected':''}>${k.nama_kegiatan} (${k.status})</option>`).join('')}</select></div>
 <div><label class="text-xs font-bold">Tanggal *</label><input type="date" name="tanggal_transaksi" value="${d.tanggal_transaksi||''}" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">Nomor bukti</label><input name="nomor_bukti" value="${d.nomor_bukti||''}" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">Sumber dana</label><select name="sumber_dana_id" class="w-full border rounded p-2"><option value="">-</option>${SUM.map(s=>`<option value="${s.id}" ${d.sumber_dana_id==s.id?'selected':''}>${s.nama_sumber_dana}</option>`).join('')}</select></div>
-<div><label class="text-xs font-bold">Kode rekening</label><input name="kode_rekening" value="${d.kode_rekening||''}" class="w-full border rounded p-2"></div>
+<div><label class="text-xs font-bold">Nomor Bukti</label><input name="nomor_bukti" value="${d.nomor_bukti||''}" class="w-full border rounded p-2"></div>
+<div><label class="text-xs font-bold">Sumber Dana</label><select name="sumber_dana_id" class="w-full border rounded p-2"><option value="">-</option>${SUM.map(s=>`<option value="${s.id}" ${d.sumber_dana_id==s.id?'selected':''}>${s.nama_sumber_dana}</option>`).join('')}</select></div>
+<div><label class="text-xs font-bold">Kode Rekening</label><input name="kode_rekening" value="${d.kode_rekening||''}" class="w-full border rounded p-2"></div>
 <div class="md:col-span-2"><label class="text-xs font-bold">Uraian *</label><input name="uraian" required value="${(d.uraian||'').replaceAll('"','')}" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">Volume</label><input type="number" step="0.01" name="volume" id="rv" value="${d.volume??1}" oninput="rcalc()" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">Harga</label><input type="number" step="0.01" name="harga" id="rh" value="${d.harga??0}" oninput="rcalc()" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">Vendor/Penerima</label><input name="penerima_vendor" value="${d.penerima_vendor||''}" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">No nota</label><input name="nomor_nota" value="${d.nomor_nota||''}" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">Bukti (JPG/PNG/PDF max <?=MAX_UPLOAD_MB?>MB)</label><input type="file" name="bukti" accept=".jpg,.jpeg,.png,.pdf" class="w-full border rounded p-2"></div>
+<div><label class="text-xs font-bold">Volume</label><input type="number" min="0" step="1" name="volume" id="rv" value="${Math.round(d.volume??1)}" oninput="rcalc()" class="w-full border rounded p-2"></div>
+<div><label class="text-xs font-bold">Harga Satuan</label><input type="number" min="0" step="0.01" name="harga" id="rh" value="${d.harga??0}" oninput="rcalc()" class="w-full border rounded p-2"></div>
+<div><label class="text-xs font-bold">Vendor / Penerima</label><input name="penerima_vendor" value="${d.penerima_vendor||''}" class="w-full border rounded p-2"></div>
+<div><label class="text-xs font-bold">Nomor Nota</label><input name="nomor_nota" value="${d.nomor_nota||''}" class="w-full border rounded p-2"></div>
+<div><label class="text-xs font-bold">Bukti (JPG/PNG/PDF Max <?=MAX_UPLOAD_MB?>MB)</label><input type="file" name="bukti" accept=".jpg,.jpeg,.png,.pdf" class="w-full border rounded p-2"></div>
 <div><label class="text-xs font-bold">Keterangan</label><input name="keterangan" value="${d.keterangan||''}" class="w-full border rounded p-2"></div>
 <div class="md:col-span-2 text-right font-bold">Jumlah: <span id="rtot">Rp 0</span></div>
 <div class="md:col-span-2"><label class="text-xs"><input type="checkbox" name="allow_over" value="1"> Izinkan melebihi anggaran (wajib alasan)</label><input name="over_reason" placeholder="Alasan overbudget" class="w-full border rounded p-2 mt-1"></div>
 <div class="md:col-span-2"><button class="w-full bg-emerald-700 text-white rounded p-2 font-bold">Simpan</button></div></form>`;
-openModal(h);rcalc();}
-function rcalc(){const v=parseFloat(document.getElementById('rv').value)||0,h=parseFloat(document.getElementById('rh').value)||0;document.getElementById('rtot').innerText=rp(v*h);}
+openModal(h,'md');rcalc();}
+function rcalc(){const v=Math.max(0,Math.round(parseFloat(document.getElementById('rv').value)||0)),h=parseFloat(document.getElementById('rh').value)||0;document.getElementById('rtot').innerText=rp(v*h);}
 async function realSave(e,id){e.preventDefault();const f=new FormData(e.target);f.append('csrf_token',CSRF);f.append('act','realisasi_save');f.append('id',id);
 const r=await fetch(BASE+'api/x',{method:'POST',body:f});const j=await r.json();
 if(j.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else{if(j.over){if(!await ask(j.msg,'Butuh izin khusus + alasan.','Tetap simpan'))return;f.set('allow_over','1');const rr=await Swal.fire({title:'Alasan overbudget',input:'text',inputPlaceholder:'Wajib isi...',showCancelButton:true,cancelButtonText:'Batal',confirmButtonText:'Simpan',confirmButtonColor:'#059669'});if(rr.isConfirmed&&rr.value){f.set('over_reason',rr.value);const r2=await fetch(BASE+'api/x',{method:'POST',body:f});const j2=await r2.json();if(j2.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else err(j2.msg);}}}else err(j.msg||'Gagal');}}

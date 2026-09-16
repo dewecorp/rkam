@@ -1,6 +1,6 @@
 <?php
 $m=Helper::madrasah($pdo);
-$app=Helper::setting($pdo,'app_name','RKAM Madrasah');$km=Helper::setting($pdo,'kode_madrasah','MI-SF');
+$app=Helper::setting($pdo,'app_name','SIRKAM');$km=Helper::setting($pdo,'kode_madrasah','MI-SF');
 function lab($t,$n,$v,$ph=''){return '<div><label class="text-xs font-bold text-emerald-900">'.$t.'</label><input name="'.$n.'" value="'.Security::e($v??'').'" placeholder="'.$ph.'" class="w-full border rounded p-2 mt-1"></div>';}
 ?>
 <div class="grid lg:grid-cols-2 gap-3">
