@@ -15,19 +15,23 @@ $bd=['labels'=>[],'data'=>[]];foreach($b->fetchAll() as $r){$bd['labels'][]=$r['
 Security::json(['ok'=>true,'data'=>['bulan'=>$bl,'sumber'=>$sm,'bidang'=>$bd]]);
 }
 case 'notif_list': {
-$l=$pdo->prepare("SELECT * FROM notifications WHERE (role_target=? OR user_id=?) ORDER BY is_read ASC, id DESC LIMIT 20");$l->execute([Auth::role(),Auth::id()]);
+if(Auth::role()==='superadmin'){$l=$pdo->query("SELECT * FROM notifications ORDER BY is_read ASC, id DESC LIMIT 20");}
+else{$l=$pdo->prepare("SELECT * FROM notifications WHERE (role_target=? OR role_target IS NULL OR role_target='' OR user_id=?) ORDER BY is_read ASC, id DESC LIMIT 20");$l->execute([Auth::role(),Auth::id()]);}
 Security::json(['ok'=>true,'data'=>$l->fetchAll()]);
 }
 case 'notif_read': {
 $id=(int)($_POST['id']??0);
-$s=$pdo->prepare("SELECT * FROM notifications WHERE id=? AND (role_target=? OR user_id=? OR role_target IS NULL)");$s->execute([$id,Auth::role(),Auth::id()]);$n=$s->fetch();
+if(Auth::role()==='superadmin'){$s=$pdo->prepare("SELECT * FROM notifications WHERE id=?");$s->execute([$id]);}
+else{$s=$pdo->prepare("SELECT * FROM notifications WHERE id=? AND (role_target=? OR role_target IS NULL OR role_target='' OR user_id=?)");$s->execute([$id,Auth::role(),Auth::id()]);}
+$n=$s->fetch();
 if($n){$pdo->prepare("UPDATE notifications SET is_read=1 WHERE id=?")->execute([$id]);}
 $target=BASE_URL.'rkam';
 if($n&&$n['modul']==='rkam'&&$n['record_id'])$target=BASE_URL.'rkam/detail/'.$n['record_id'];
 Security::json(['ok'=>true,'target'=>$target]);
 }
 case 'notif_read_all': {
-$pdo->prepare("UPDATE notifications SET is_read=1 WHERE role_target=? OR user_id=?")->execute([Auth::role(),Auth::id()]);
+if(Auth::role()==='superadmin'){$pdo->query("UPDATE notifications SET is_read=1");}
+else{$pdo->prepare("UPDATE notifications SET is_read=1 WHERE role_target=? OR role_target IS NULL OR role_target='' OR user_id=?")->execute([Auth::role(),Auth::id()]);}
 Security::json(['ok'=>true]);
 }
 case 'tahun_aktif': {
@@ -140,7 +144,9 @@ if(in_array($to,['ditolak','direvisi'])&&!$cat)Security::json(['ok'=>false,'msg'
 $pdo->beginTransaction();try{
 $pdo->prepare("UPDATE rkam SET status=? WHERE id=?")->execute([$to,$id]);
 $pdo->prepare("INSERT INTO rkam_status_history(rkam_id,status_from,status_to,catatan,created_by) VALUES(?,?,?,?,?)")->execute([$id,$r['status'],$to,$cat,Auth::id()]);
-Logger::log($pdo,$to,'rkam',$id,['status'=>$r['status']],['status'=>$to]);Logger::notify($pdo,'RKAM '.$to,$r['nama_kegiatan'].' : '.$cat,null,null,'rkam',$id);
+Logger::log($pdo,$to,'rkam',$id,['status'=>$r['status']],['status'=>$to]);
+if($to==='diajukan'){$jd=in_array($r['status'],['ditolak','direvisi'])?'RKAM Diajukan Kembali':'RKAM Diajukan';Logger::notify($pdo,$jd,$r['nama_kegiatan'].($cat?' : '.$cat:''),'kepala_madrasah',null,'rkam',$id);}
+elseif(in_array($to,['ditolak','direvisi','diverifikasi','disetujui','dikunci'])){Logger::notify($pdo,'RKAM '.$to,$r['nama_kegiatan'].($cat?' : '.$cat:''),'bendahara',null,'rkam',$id);}
 $pdo->commit();Security::json(['ok'=>true]);
 }catch(Exception $ex){$pdo->rollBack();Security::json(['ok'=>false,'msg'=>'Gagal']);}
 }
@@ -189,7 +195,21 @@ $m=['nama_madrasah','nsm','npsn','alamat','desa','kecamatan','kabupaten','provin
 $d=[];foreach($m as $k)$d[$k]=trim($_POST[$k]??'');
 $pdo->prepare("UPDATE madrasah SET nama_madrasah=?,nsm=?,npsn=?,alamat=?,desa=?,kecamatan=?,kabupaten=?,provinsi=?,kode_pos=?,email=?,telepon=?,nama_kepala=?,nip_kepala=?,nama_bendahara=?,nip_bendahara=? WHERE id=1")->execute(array_values($d));
 foreach(['app_name','kode_madrasah','max_upload_mb'] as $k){if(isset($_POST[$k]))$pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES(?,?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$k,trim($_POST[$k])]);}
-Logger::log($pdo,'edit','pengaturan',1);Security::json(['ok'=>true,'logo'=>$d['logo']??null]);
+$logoFn=null;
+if(!empty($_FILES['logo']['tmp_name'])&&is_uploaded_file($_FILES['logo']['tmp_name'])){
+if($_FILES['logo']['size']>2*1024*1024)Security::json(['ok'=>false,'msg'=>'Logo > 2 MB']);
+$finfo=new finfo(FILEINFO_MIME_TYPE);$mime=$finfo->file($_FILES['logo']['tmp_name']);
+$okm=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];
+if(!isset($okm[$mime]))Security::json(['ok'=>false,'msg'=>'Logo harus JPG/PNG/WebP']);
+if(!is_dir(LOGO_DIR))mkdir(LOGO_DIR,0755,true);
+$logoFn='logo_'.date('YmdHis').'_'.bin2hex(random_bytes(4)).'.'.$okm[$mime];
+if(!move_uploaded_file($_FILES['logo']['tmp_name'],LOGO_DIR.$logoFn))Security::json(['ok'=>false,'msg'=>'Upload logo gagal. Cek izin folder uploads/logo.']);
+$old=$pdo->query("SELECT logo FROM madrasah WHERE id=1")->fetchColumn();
+$pdo->prepare("UPDATE madrasah SET logo=? WHERE id=1")->execute([$logoFn]);
+if($old&&is_file(LOGO_DIR.$old))@unlink(LOGO_DIR.$old);
+Logger::log($pdo,'edit','logo',1,['logo'=>$old],['logo'=>$logoFn]);
+}
+Logger::log($pdo,'edit','pengaturan',1);Security::json(['ok'=>true,'logo'=>$logoFn]);
 }
 case 'logo_upload': {
 if(!in_array(Auth::role(),['superadmin','kepala_madrasah','bendahara']))Security::json(['ok'=>false,'msg'=>'No permission'],403);

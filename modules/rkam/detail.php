@@ -26,13 +26,13 @@ $role=Auth::role();
 <a href="<?=BASE_URL?>print/rkam?id=<?=$id?>" target="_blank" title="Cetak" class="btn-ic btn-view" style="width:auto;padding:0 .8rem"><i class="fa-solid fa-print"></i></a>
 <?php if(in_array($role,['superadmin','bendahara','operator'])&&!in_array($r['status'],['dikunci'])):?><button onclick="rkamForm(<?=$id?>)" title="Edit" class="btn-ic btn-edit"><i class="fa-solid fa-pen-to-square"></i></button><?php endif;?>
 <?php if(in_array($role,['superadmin','bendahara','operator'])&&$r['status']==='draft'):?><button onclick="setStatus(<?=$id?>,'diajukan')" title="Ajukan" class="btn-ic btn-dl"><i class="fa-solid fa-paper-plane"></i></button><?php endif;?>
+<?php if(in_array($role,['superadmin','bendahara','operator'])&&in_array($r['status'],['ditolak','direvisi'])):?><button onclick="setStatus(<?=$id?>,'diajukan')" title="Ajukan Ulang" class="btn-ic btn-dl"><i class="fa-solid fa-paper-plane"></i></button><?php endif;?>
 <?php if(in_array($role,['superadmin','kepala_madrasah'])):?>
 <?php if($r['status']==='diajukan'):?><button onclick="setStatus(<?=$id?>,'diverifikasi')" title="Verifikasi" class="btn-ic btn-view"><i class="fa-solid fa-circle-check"></i></button><?php endif;?>
 <?php if($r['status']==='diverifikasi'):?><button onclick="setStatus(<?=$id?>,'disetujui')" title="Setujui" class="btn-ic btn-dl"><i class="fa-solid fa-thumbs-up"></i></button><?php endif;?>
 <?php if(in_array($r['status'],['diajukan','diverifikasi'])):?><button onclick="askNote(<?=$id?>,'ditolak')" title="Tolak" class="btn-ic btn-del"><i class="fa-solid fa-thumbs-down"></i></button> <button onclick="askNote(<?=$id?>,'direvisi')" title="Minta Revisi" class="btn-ic btn-edit"><i class="fa-solid fa-rotate-left"></i></button><?php endif;?>
 <?php if($r['status']==='disetujui'):?><button onclick="setStatus(<?=$id?>,'dikunci')" title="Kunci" class="btn-ic btn-del"><i class="fa-solid fa-lock"></i></button><?php endif;?>
 <?php if($r['status']==='dikunci'&&in_array($role,['superadmin','kepala_madrasah'])):?><button onclick="setStatus(<?=$id?>,'draft')" title="Unlock" class="btn-ic btn-key"><i class="fa-solid fa-lock-open"></i></button><?php endif;?>
-<?php if(in_array($r['status'],['ditolak','direvisi'])):?><button onclick="setStatus(<?=$id?>,'diajukan')" title="Ajukan Ulang" class="btn-ic btn-dl"><i class="fa-solid fa-paper-plane"></i></button><?php endif;?>
 <?php endif;?></div></div>
 <div class="grid lg:grid-cols-2 gap-3">
 <div class="bg-white rounded shadow p-4"><b>Item Anggaran</b>
