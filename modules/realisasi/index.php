@@ -50,17 +50,39 @@ if(kode)bOpts.push(kode);
 if(dok&&dok!==kode)bOpts.push(dok);
 bs.innerHTML=bOpts.map(b=>`<option value="${b.replaceAll('"','')}" ${(curBukti||'')===b?'selected':''}>${b.replaceAll('<','&lt;')}</option>`).join('')||'<option value="">- Belum Ada Kode -</option>';
 if(!curBukti&&bOpts.length)bs.value=bOpts[0];
+if(typeof ddRefresh==='function')ddRefresh(rs);
 rs.innerHTML='<option value="">- Memuat... -</option>';
+let list=[];
 try{
 const j=await api('x',{act:'rkam_items',rkam_id:ks.value});
-const list=(j.ok&&j.data)?j.data:[];
-if(!list.length){rs.innerHTML=`<option value="${(curRek||'').replaceAll('"','')}">${(curRek||'- Pilih -').replace(/</g,'&lt;')}</option>`;}
-else{rs.innerHTML=list.map(it=>{const kr=it.kode_rekening||'';const lb=(kr?kr+' — ':'')+it.uraian;return `<option value="${kr.replaceAll('"','')}" ${(curRek||'')===kr?'selected':''}>${lb.replace(/</g,'&lt;')}</option>`;}).join('');if(!curRek)rs.value=list[0].kode_rekening||'';}
-}catch(e){rs.innerHTML=`<option value="${(curRek||'').replaceAll('"','')}">${(curRek||'-').replace(/</g,'&lt;')}</option>`;}
-if(typeof ddify==='function')setTimeout(()=>ddify(document.getElementById('modalBox')),0);
+list=(j.ok&&j.data)?j.data:[];
+}catch(e){err('Gagal muat rekening: '+(e.message||e));}
+if(!list.length){rs.innerHTML=`<option value="">- Item RKAM Kosong -</option>`;}
+else{rs.innerHTML=list.map((it,i)=>{const kr=(it.kode_rekening||'').trim();const val=kr||('ITEM-'+it.id);const lb=(kr?kr+' — ':'')+it.uraian;const sel=curRek?(String(curRek)===String(val)||String(curRek)===String(kr)):(!curRek&&i===0);return `<option value="${String(val).replaceAll('"','')}" ${sel?'selected':''}>${String(lb).replace(/</g,'&lt;')}</option>`;}).join('');}
+if(typeof ddify==='function')ddify(document.getElementById('modalBox'));
+if(typeof bindMoney==='function')bindMoney(document.getElementById('modalBox'));
+rcalc();
 }
-async function chgKeg(){const ks=document.getElementById('rlKeg');if(!ks)return;try{const j=await api('x',{act:'rkam_sumber',rkam_id:ks.value});if(j.ok&&j.data){const sel=document.querySelector('#fReal [name=sumber_dana_id]');if(sel){sel.innerHTML=j.data.map(s=>`<option value="${s.id}">${s.nama_sumber_dana} (${s.jumlah})</option>`).join('');if(typeof ddify==='function'){const w=sel.closest('.dd');if(w){w.parentNode.insertBefore(sel,w);w.remove();delete sel.dataset.dd;}setTimeout(()=>ddify(document.getElementById('modalBox')),0);}}}catch(e){}fillKeg(ks.value,'','');}
-function rcalc(){const v=Math.max(0,Math.round(parseFloat(document.getElementById('rv').value)||0)),h=parseID(document.getElementById('rh').value);document.getElementById('rtot').innerText=rp(v*h);}
+async function chgKeg(){
+const ks=document.getElementById('rlKeg');
+if(!ks)return;
+try{
+const j=await api('x',{act:'rkam_sumber',rkam_id:ks.value});
+if(j.ok&&j.data){
+const sel=document.querySelector('#fReal [name=sumber_dana_id]');
+if(sel){
+sel.innerHTML=j.data.map(s=>`<option value="${s.id}">${s.nama_sumber_dana} (${s.jumlah})</option>`).join('');
+if(typeof ddify==='function'){
+const w=sel.closest('.dd');
+if(w){w.parentNode.insertBefore(sel,w);w.remove();delete sel.dataset.dd;}
+setTimeout(()=>ddify(document.getElementById('modalBox')),0);
+}
+}
+}
+}catch(e){err('Gagal muat sumber: '+e.message);}
+fillKeg(ks.value,'','');
+}
+function rcalc(){const rv=document.getElementById('rv'),rh=document.getElementById('rh'),t=document.getElementById('rtot');if(!rv||!rh||!t)return;let v=parseFloat(rv.value);if(isNaN(v))v=0;v=Math.max(0,Math.round(v));const h=parseID(rh.value);t.innerText=rp(v*h);}
 async function realSave(e,id){e.preventDefault();const ks=document.getElementById('rlKeg');const k=ks?RK.find(x=>String(x.id)===String(ks.value)):null;if(!k){err('Langkah 1 belum: pilih Kegiatan RKAM dulu');return;}const ura=document.querySelector('#fReal [name=uraian]');if(!ura||!ura.value.trim()){err('Langkah 3 belum: isi Uraian');return;}const f=new FormData(e.target);f.append('csrf_token',CSRF);f.append('act','realisasi_save');f.append('id',id);
 const r=await fetch(BASE+'api/x',{method:'POST',body:f});const j=await r.json();
 if(j.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);return;}
