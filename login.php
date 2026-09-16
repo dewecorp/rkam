@@ -12,7 +12,8 @@ $err=$msg;Logger::log($pdo,'login_gagal','auth',null,null,['u'=>$_POST['username
 <!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="https://cdn.tailwindcss.com"></script><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<?php $m=Helper::madrasah($pdo); $appNm=Helper::setting($pdo,'app_name','SIRKAM'); ?>
+<?php $m=Helper::madrasah($pdo); $appNm=Helper::setting($pdo,'app_name','SIRKAM'); $favOk=!empty($m['logo'])&&is_file(__DIR__.'/uploads/logo/'.$m['logo']); ?>
+<?php if($favOk):?><link rel="icon" type="image/png" href="uploads/logo/<?=Security::e($m['logo'])?>?v=<?=filemtime(__DIR__.'/uploads/logo/'.$m['logo'])?>"><?php endif; ?>
 <title>Login | <?=Security::e($appNm)?></title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>body{font-family:'Inter',system-ui,sans-serif}input{border:1.5px solid #6ee7b7 !important;border-radius:.9rem !important}input:focus{outline:none !important;border-color:#059669 !important;box-shadow:0 0 0 3px rgba(16,185,129,.18) !important}</style></head>
