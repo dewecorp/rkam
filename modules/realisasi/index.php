@@ -15,6 +15,7 @@ $can=in_array(Auth::role(),['superadmin','bendahara']);
 <td class="p-2 no-print"><?php if($can):?><button onclick='realForm(<?=$r['id']?>,<?=json_encode($r,JSON_HEX_APOS|JSON_HEX_QUOT)?>)' title="Edit" class="btn-ic btn-edit"><i class="fa-solid fa-pen-to-square"></i></button> <button onclick="realDel(<?=$r['id']?>)" title="Hapus" class="btn-ic btn-del"><i class="fa-solid fa-trash-can"></i></button><?php endif;?></td></tr><?php endforeach;?></tbody></table><?php endif;?></div>
 <script>
 const RK=<?=json_encode($rk)?>,SUM=<?=json_encode($sum)?>;
+let rkamItemsMap=new Map();
 function realForm(id,d){d=d||{tanggal_transaksi:'<?=date('Y-m-d')?>',volume:1,harga:0};
 let h=`<div class="flex justify-between items-center mb-3"><b>${id?'Edit':'Tambah'} Realisasi</b><button type="button" onclick="closeModal()" title="Tutup" class="w-8 h-8 rounded-full bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div>
 <form onsubmit="realSave(event,${id})" class="text-sm grid md:grid-cols-2 gap-2" enctype="multipart/form-data" id="fReal">
@@ -22,9 +23,10 @@ let h=`<div class="flex justify-between items-center mb-3"><b>${id?'Edit':'Tamba
 <div class="md:col-span-2"><label class="text-xs font-bold">1. Kegiatan RKAM *</label><select name="rkam_id" id="rlKeg" onchange="chgKeg()" class="w-full border rounded p-2">${RK.map(k=>{const sisa=(k.total_anggaran||0)-(k.jml_real||0);return `<option value="${k.id}" ${d.rkam_id==k.id?'selected':''}>${k.kode_kegiatan?k.kode_kegiatan+' — ':''}${k.nama_kegiatan} (${k.status}, sisa ${rp(sisa)})</option>`;}).join('')}</select></div>
 <div id="rkInfo" class="md:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-2.5 text-xs"></div>
 <div><label class="text-xs font-bold">Tanggal *</label><input type="date" name="tanggal_transaksi" value="${d.tanggal_transaksi||''}" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">Nomor Bukti (Kode Kegiatan)</label><select name="nomor_bukti" id="rlBukti" class="w-full border rounded p-2"></select></div>
+<div><label class="text-xs font-bold">Nomor Bukti (Kode Kegiatan)</label><select name="nomor_bukti" id="rlBukti" onchange="syncRekByBukti()" class="w-full border rounded p-2"></select></div>
 <div><label class="text-xs font-bold">Sumber Dana</label><select name="sumber_dana_id" class="w-full border rounded p-2"><option value="">-</option>${SUM.map(s=>`<option value="${s.id}" ${d.sumber_dana_id==s.id?'selected':''}>${s.nama_sumber_dana}</option>`).join('')}</select></div>
 <div><label class="text-xs font-bold">Kode Rekening (Ikut Kegiatan)</label><select name="kode_rekening" id="rlRek" class="w-full border rounded p-2"></select></div>
+<div id="rekInfo" class="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-2.5 text-xs"></div>
 <div class="md:col-span-2"><label class="text-xs font-bold">Uraian *</label><input name="uraian" required value="${(d.uraian||'').replaceAll('"','')}" class="w-full border rounded p-2"></div>
 <div><label class="text-xs font-bold">Volume</label><input type="number" min="0" step="1" name="volume" id="rv" value="${Math.round(d.volume??1)}" oninput="rcalc()" class="w-full border rounded p-2"></div>
 <div><label class="text-xs font-bold">Harga Satuan (Rp)</label><input type="text" inputmode="numeric" data-money data-dec="0" name="harga" id="rh" value="${d.harga??0}" oninput="rcalc()" class="w-full border rounded p-2"></div>
@@ -44,24 +46,40 @@ const k=RK.find(x=>String(x.id)===String(ks.value));
 const kode=k?(k.kode_kegiatan||''):'';
 const dok=k?(k.nomor_dokumen||''):'';
 const agg=k?parseFloat(k.total_anggaran||0):0, used=k?parseFloat(k.jml_real||0):0, sisa=agg-used;
-if(info&&k){info.innerHTML=`<div class="grid grid-cols-3 gap-2 text-center"><div>Anggaran<br><b>${rp(agg)}</b></div><div>Terealisasi<br><b>${rp(used)}</b></div><div>Sisa<br><b class="${sisa<0?'text-red-600':'text-emerald-700'}">${rp(sisa)}</b></div></div>${k.status==='draft'?'<div class="mt-1 text-red-600 font-bold">RKAM masih Draft — realisasi ditolak server. Ajukan & setujui dulu.</div>':(k.status==='dikunci'?'<div class="mt-1 text-amber-700">RKAM dikunci — hanya superadmin bisa realisasi.</div>':'')}`;}
+if(info&&k){info.innerHTML=`<div class=\"grid grid-cols-3 gap-2 text-center\"><div>Anggaran<br><b>${rp(agg)}</b></div><div>Terealisasi<br><b>${rp(used)}</b></div><div>Sisa<br><b class=\"${sisa<0?'text-red-600':'text-emerald-700'}\">${rp(sisa)}</b></div></div>${k.status==='draft'?'<div class=\"mt-1 text-red-600 font-bold\">RKAM masih Draft — realisasi ditolak server. Ajukan & setujui dulu.</div>':(k.status==='dikunci'?'<div class=\"mt-1 text-amber-700\">RKAM dikunci — hanya superadmin bisa realisasi.</div>':'')}`;}
 let bOpts=[];
 if(kode)bOpts.push(kode);
 if(dok&&dok!==kode)bOpts.push(dok);
-bs.innerHTML=bOpts.map(b=>`<option value="${b.replaceAll('"','')}" ${(curBukti||'')===b?'selected':''}>${b.replaceAll('<','&lt;')}</option>`).join('')||'<option value="">- Belum Ada Kode -</option>';
+bs.innerHTML=bOpts.map(b=>`<option value=\"${b.replaceAll('\"','')}\" ${(curBukti||'')===b?'selected':''}>${b.replaceAll('<','&lt;')}</option>`).join('')||'<option value=\"\">- Belum Ada Kode -</option>';
 if(!curBukti&&bOpts.length)bs.value=bOpts[0];
-if(typeof ddRefresh==='function')ddRefresh(rs);
 rs.innerHTML='<option value="">- Memuat... -</option>';
 let list=[];
 try{
 const j=await api('x',{act:'rkam_items',rkam_id:ks.value});
 list=(j.ok&&j.data)?j.data:[];
+rkamItemsMap.set(String(ks.value),list);
 }catch(e){err('Gagal muat rekening: '+(e.message||e));}
 if(!list.length){rs.innerHTML=`<option value="">- Item RKAM Kosong -</option>`;}
-else{rs.innerHTML=list.map((it,i)=>{const kr=(it.kode_rekening||'').trim();const val=kr||('ITEM-'+it.id);const lb=(kr?kr+' — ':'')+it.uraian;const sel=curRek?(String(curRek)===String(val)||String(curRek)===String(kr)):(!curRek&&i===0);return `<option value="${String(val).replaceAll('"','')}" ${sel?'selected':''}>${String(lb).replace(/</g,'&lt;')}</option>`;}).join('');}
+else{rs.innerHTML=list.map((it,i)=>{const kr=(it.kode_rekening||'').trim();const val=kr||('ITEM-'+it.id);const lb=(kr?kr+' — ':'')+(it.nama_rekening||it.uraian||'Item RKAM');const sel=curRek?(String(curRek)===String(val)||String(curRek)===String(kr)):(!curRek&&i===0);return `<option value="${String(val).replaceAll('"','')}" ${sel?'selected':''}>${String(lb).replace(/</g,'&lt;')}</option>`;}).join('');}
+syncRekByBukti(curRek);
 if(typeof ddify==='function')ddify(document.getElementById('modalBox'));
 if(typeof bindMoney==='function')bindMoney(document.getElementById('modalBox'));
 rcalc();
+}
+function syncRekByBukti(curRek){
+const ks=document.getElementById('rlKeg'),bs=document.getElementById('rlBukti'),rs=document.getElementById('rlRek');
+if(!ks||!bs||!rs)return;
+if(curRek){rs.value=curRek;if(typeof ddRefresh==='function')ddRefresh(rs);return;}
+const items=rkamItemsMap.get(String(ks.value))||[];
+if(!items.length)return;
+const k=RK.find(x=>String(x.id)===String(ks.value));
+let item=null;
+if(k&&bs.value===k.nomor_dokumen)item=items.find(it=>String(it.id)===String(items[0].id));
+if(!item)item=items.find(it=>String((it.kode_rekening||'').trim())===String(bs.value));
+if(!item)item=items[0];
+const kr=(item.kode_rekening||'').trim();
+rs.value=kr||('ITEM-'+item.id);
+if(typeof ddRefresh==='function')ddRefresh(rs);
 }
 async function chgKeg(){
 const ks=document.getElementById('rlKeg');
@@ -95,6 +113,6 @@ f.set('over_reason',rr.value);
 const r2=await fetch(BASE+'api/x',{method:'POST',body:f});const j2=await r2.json();
 if(j2.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else err(j2.msg||'Gagal');}
 async function realDel(id){if(!await ask('Hapus transaksi ini?','Total realisasi ikut berubah.','Ya, Hapus'))return;const j=await api('x',{act:'realisasi_delete',id});if(j.ok){ok('Dihapus');setTimeout(()=>location.reload(),800);}else err(j.msg);}
-window.realForm=realForm;window.realSave=realSave;window.realDel=realDel;window.rcalc=rcalc;window.fillKeg=fillKeg;window.fillSumber=fillSumber;window.chgKeg=chgKeg;window.parseID=parseID;window.fmtID=fmtID;
+window.realForm=realForm;window.realSave=realSave;window.realDel=realDel;window.rcalc=rcalc;window.fillKeg=fillKeg;window.fillSumber=fillSumber;window.chgKeg=chgKeg;window.syncRekByBukti=syncRekByBukti;window.parseID=parseID;window.fmtID=fmtID;
 (function(){const b=document.getElementById('btnAddReal');if(b)b.addEventListener('click',ev=>{ev.preventDefault();window.realForm(0);});})();
 </script>
