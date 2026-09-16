@@ -6,6 +6,7 @@ $sisa=(float)$tot-(float)$rea;
 $pers=Helper::persen($rea,$tot);
 $jk=$pdo->query("SELECT COUNT(*) FROM rkam WHERE tahun_id=".(int)$tid)->fetchColumn();
 $st=$pdo->query("SELECT status,COUNT(*) c FROM rkam WHERE tahun_id=".(int)$tid." GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
+$approved=(int)($st['disetujui']??0)+(int)($st['diverifikasi']??0)+(int)($st['dikunci']??0);
 ?>
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
 <?php foreach([['Total Anggaran',$tot,'from-emerald-500 to-teal-600','fa-wallet',Security::rupiah($tot)],['Total Realisasi',$rea,'from-blue-500 to-indigo-600','fa-money-bill-wave',Security::rupiah($rea)],['Sisa Anggaran',$sisa,'from-amber-500 to-orange-600','fa-piggy-bank',Security::rupiah($sisa)],['Serapan',$pers.'%','from-violet-500 to-purple-600','fa-gauge-high',$pers.'%']] as $c):?>
@@ -14,7 +15,7 @@ $st=$pdo->query("SELECT status,COUNT(*) c FROM rkam WHERE tahun_id=".(int)$tid."
 <div class="absolute -right-2 -bottom-3 w-20 h-20 rounded-full bg-white/15"></div><div class="absolute right-4 bottom-3 w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center text-lg"><i class="fa-solid <?=$c[3]?>"></i></div></div>
 <?php endforeach;?></div>
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 text-sm">
-<?php foreach([['Kegiatan',$jk,'emerald','fa-clipboard-list'],['Disetujui',($st['disetujui']??0),'blue','fa-circle-check'],['Draft',($st['draft']??0),'amber','fa-pen-to-square'],['Tahun Aktif',($th['tahun']??'-'),'violet','fa-calendar-days']] as $s):?>
+<?php foreach([['Kegiatan',$jk,'emerald','fa-clipboard-list'],['Disetujui',$approved,'blue','fa-circle-check'],['Draft',($st['draft']??0),'amber','fa-pen-to-square'],['Tahun Aktif',($th['tahun']??'-'),'violet','fa-calendar-days']] as $s):?>
 <div class="relative overflow-hidden bg-white p-3 rounded-2xl shadow border-l-4 border-<?=$s[2]?>-500"><div class="text-xs text-gray-500 flex items-center gap-1"><i class="fa-solid <?=$s[3]?> text-<?=$s[2]?>-500"></i> <?=$s[0]?></div><div class="text-lg font-extrabold text-slate-800"><?=$s[1]?></div></div>
 <?php endforeach;?></div>
 <div class="grid lg:grid-cols-5 gap-4">

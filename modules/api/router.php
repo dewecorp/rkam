@@ -174,27 +174,36 @@ if(!in_array(Auth::role(),['superadmin','bendahara']))Security::json(['ok'=>fals
 $id=(int)($_POST['id']??0);$rkam_id=(int)($_POST['rkam_id']??0);
 $s=$pdo->prepare("SELECT * FROM rkam WHERE id=?");$s->execute([$rkam_id]);$rk=$s->fetch();if(!$rk)Security::json(['ok'=>false,'msg'=>'RKAM invalid']);
 if(in_array($rk['status'],['draft','diajukan','diverifikasi','ditolak','direvisi','dikunci'])&&Auth::role()!=='superadmin')Security::json(['ok'=>false,'msg'=>'Realisasi wajib setelah RKAM Disetujui (status kini: '.$rk['status'].'). Ajukan & setujui dulu.']);
-$vol=Security::vol($_POST['volume']??1);$hr=Security::money($_POST['harga']??0);$jum=round($vol*$hr,2);
-$tot=$pdo->prepare("SELECT COALESCE(SUM(jumlah),0) FROM realisasi WHERE rkam_id=?".($id?" AND id<>$id":''));$tot->execute([$rkam_id]);$used=(float)$tot->fetchColumn();
-if($used+$jum>(float)$rk['total_anggaran']+0.01){$allow=($_POST['allow_over']??'')==='1';$reason=trim($_POST['over_reason']??'');
-if(!$allow||!$reason)Security::json(['ok'=>false,'msg'=>'Realisasi melebihi anggaran sebesar Rp '.number_format($used+$jum-$rk['total_anggaran'],0,',','.'),'over'=>true,'lebih'=>$used+$jum-$rk['total_anggaran']]);
-if(!in_array(Auth::role(),['superadmin','kepala_madrasah','bendahara']))Security::json(['ok'=>false,'msg'=>'No permission overbudget'],403);}
-else{$allow=!empty($_POST['allow_over'])?1:0;$reason=$_POST['over_reason']??null;}
+$allow=!empty($_POST['allow_over'])?1:0;$reason=$_POST['over_reason']??null;
 $bf=null;$fn=null;
 if(!empty($_FILES['bukti']['name'])){$mx=MAX_UPLOAD_MB*1024*1024;if($_FILES['bukti']['size']>$mx)Security::json(['ok'=>false,'msg'=>'File > '.MAX_UPLOAD_MB.'MB']);
 $finfo=new finfo(FILEINFO_MIME_TYPE);$mime=$finfo->file($_FILES['bukti']['tmp_name']);$okm=['image/jpeg'=>'jpg','image/png'=>'png','application/pdf'=>'pdf'];
 if(!isset($okm[$mime]))Security::json(['ok'=>false,'msg'=>'File harus JPG/PNG/PDF']);
 $ext=$okm[$mime];if(!is_dir(UPLOAD_DIR))mkdir(UPLOAD_DIR,0755,true);$fn=date('YmdHis').'_'.bin2hex(random_bytes(8)).'.'.$ext;
 if(!move_uploaded_file($_FILES['bukti']['tmp_name'],UPLOAD_DIR.$fn))Security::json(['ok'=>false,'msg'=>'Upload gagal']);}
-$d=['rkam_id'=>$rkam_id,'tahun_id'=>$rk['tahun_id'],'tanggal_transaksi'=>$_POST['tanggal_transaksi']??date('Y-m-d'),'nomor_bukti'=>substr($_POST['nomor_bukti']??'',0,100),'sumber_dana_id'=>(int)($_POST['sumber_dana_id']??0)?:null,'kode_rekening'=>substr($_POST['kode_rekening']??'',0,50),'uraian'=>substr(trim($_POST['uraian']??''),0,255),'volume'=>$vol,'satuan'=>substr($_POST['satuan']??'',0,50),'harga'=>$hr,'jumlah'=>$jum,'penerima_vendor'=>substr($_POST['penerima_vendor']??'',0,150),'nomor_nota'=>substr($_POST['nomor_nota']??'',0,100),'keterangan'=>$_POST['keterangan']??null,'allow_overbudget'=>$allow?1:0,'overbudget_reason'=>$reason,'created_by'=>Auth::id()];
-if(!$d['uraian']||!$d['tanggal_transaksi'])Security::json(['ok'=>false,'msg'=>'Langkah 2-3 belum: tanggal & uraian wajib']);
+$d=['rkam_id'=>$rkam_id,'tahun_id'=>$rk['tahun_id'],'tanggal_transaksi'=>$_POST['tanggal_transaksi']??date('Y-m-d'),'nomor_bukti'=>substr($_POST['nomor_bukti']??'',0,100),'sumber_dana_id'=>(int)($_POST['sumber_dana_id']??0)?:null,'kode_rekening'=>substr($_POST['kode_rekening']??'',0,50),'uraian'=>'','volume'=>0,'satuan'=>'','harga'=>0,'jumlah'=>0,'penerima_vendor'=>substr($_POST['penerima_vendor']??'',0,150),'nomor_nota'=>substr($_POST['nomor_nota']??'',0,100),'keterangan'=>$_POST['keterangan']??null,'allow_overbudget'=>$allow?1:0,'overbudget_reason'=>$reason,'created_by'=>Auth::id()];
+if(!$d['tanggal_transaksi'])Security::json(['ok'=>false,'msg'=>'Tanggal wajib']);
 if($d['sumber_dana_id']){$ckS=$pdo->prepare("SELECT COUNT(*) FROM rkam_sumber_dana WHERE rkam_id=? AND sumber_dana_id=?");$ckS->execute([$rkam_id,$d['sumber_dana_id']]);if(!$ckS->fetchColumn())Security::json(['ok'=>false,'msg'=>'Sumber dana tidak ada di RKAM terpilih. Pilih sesuai RKAM.']);}
 
-$items=$pdo->prepare("SELECT id,kode_rekening FROM rkam_items WHERE rkam_id=? ORDER BY id");$items->execute([$rkam_id]);$rkItems=$items->fetchAll();
+$items=$pdo->prepare("SELECT id,kode_rekening,uraian,volume,satuan_text,harga_satuan,jumlah FROM rkam_items WHERE rkam_id=? ORDER BY id");$items->execute([$rkam_id]);$rkItems=$items->fetchAll();
 if(!$rkItems)Security::json(['ok'=>false,'msg'=>'Item RKAM kosong. Lengkapi RKAM dulu.']);
 if($d['nomor_bukti']){$okB=in_array($d['nomor_bukti'],[$rk['kode_kegiatan']??'', $rk['nomor_dokumen']??''],true);if(!$okB)Security::json(['ok'=>false,'msg'=>'Nomor bukti wajib kode/nomor dokumen RKAM terpilih.']);}
-if(!$d['kode_rekening']){$first=$rkItems[0];$d['kode_rekening']=substr(trim($first['kode_rekening']??''),0,50);}
-if(str_starts_with($d['kode_rekening'],'ITEM-')){$iid=(int)substr($d['kode_rekening'],5);$found=null;foreach($rkItems as $it){if((int)$it['id']===$iid){$found=$it;break;}}if(!$found)Security::json(['ok'=>false,'msg'=>'Item RKAM tidak ada. Pilih ulang kegiatan.']);$d['kode_rekening']=substr(trim($found['kode_rekening']??''),0,50);}else{$valid=false;foreach($rkItems as $it){if(trim($it['kode_rekening']??'')===$d['kode_rekening']){$valid=true;break;}}if(!$valid)Security::json(['ok'=>false,'msg'=>'Kode rekening tidak ada di RKAM terpilih. Pilih dari dropdown.']);}
+$found=null;
+if(str_starts_with($d['kode_rekening'],'ITEM-')){$iid=(int)substr($d['kode_rekening'],5);foreach($rkItems as $it){if((int)$it['id']===$iid){$found=$it;break;}}}
+if(!$found&&$d['kode_rekening']){foreach($rkItems as $it){if(trim($it['kode_rekening']??'')===$d['kode_rekening']){$found=$it;break;}}}
+if(!$found)$found=$rkItems[0];
+$d['kode_rekening']=substr(trim($found['kode_rekening']??''),0,50);
+$d['uraian']=substr(trim($found['uraian']??''),0,255);
+$d['volume']=Security::vol($found['volume']??1);
+$d['satuan']=substr(trim($found['satuan_text']??''),0,50);
+$d['harga']=Security::money($found['harga_satuan']??0);
+$d['jumlah']=round($d['volume']*$d['harga'],2);
+if(!$d['uraian'])Security::json(['ok'=>false,'msg'=>'Uraian RKAM kosong. Perbaiki item RKAM dulu.']);
+$tot=$pdo->prepare("SELECT COALESCE(SUM(jumlah),0) FROM realisasi WHERE rkam_id=?".($id?" AND id<>$id":''));$tot->execute([$rkam_id]);$used=(float)$tot->fetchColumn();
+if($used+$d['jumlah']>(float)$rk['total_anggaran']+0.01){$allow=($_POST['allow_over']??'')==='1';$reason=trim($_POST['over_reason']??'');
+if(!$allow||!$reason)Security::json(['ok'=>false,'msg'=>'Realisasi melebihi anggaran sebesar Rp '.number_format($used+$d['jumlah']-$rk['total_anggaran'],0,',','.'),'over'=>true,'lebih'=>$used+$d['jumlah']-$rk['total_anggaran']]);
+if(!in_array(Auth::role(),['superadmin','kepala_madrasah','bendahara']))Security::json(['ok'=>false,'msg'=>'No permission overbudget'],403);
+$d['allow_overbudget']=1;$d['overbudget_reason']=$reason;}
 $pdo->beginTransaction();try{
 if($id>0){if($fn)$d['bukti_file']=$fn;$set=implode(',',array_map(fn($k)=>"$k=?",array_keys($d)));$pdo->prepare("UPDATE realisasi SET $set WHERE id=?")->execute([...array_values($d),$id]);Logger::log($pdo,'edit','realisasi',$id);}
 else{$d['bukti_file']=$fn;$pdo->prepare("INSERT INTO realisasi(".implode(',',array_keys($d)).") VALUES(".rtrim(str_repeat('?,',count($d)),',').")")->execute(array_values($d));Logger::log($pdo,'tambah','realisasi',$pdo->lastInsertId(),null,$d);}
@@ -323,7 +332,7 @@ $r['items']=$i->fetchAll();$r['sumber']=$sm->fetchAll();Security::json(['ok'=>tr
 case 'rkam_items': {
 $id=(int)($_POST['rkam_id']??0);
 if(!$id)Security::json(['ok'=>false,'msg'=>'Kegiatan wajib dipilih'],400);
-$i=$pdo->prepare("SELECT ri.id,ri.kode_rekening,ri.uraian,ri.satuan_text,ri.harga_satuan,r.nama_rekening FROM rkam_items ri LEFT JOIN rekening r ON r.kode=ri.kode_rekening WHERE ri.rkam_id=? ORDER BY ri.id");$i->execute([$id]);
+$i=$pdo->prepare("SELECT ri.id,ri.kode_rekening,ri.uraian,ri.volume,ri.satuan_text,ri.harga_satuan,r.nama_rekening FROM rkam_items ri LEFT JOIN rekening r ON r.kode=ri.kode_rekening WHERE ri.rkam_id=? ORDER BY ri.id");$i->execute([$id]);
 Security::json(['ok'=>true,'data'=>$i->fetchAll()]);
 }
 case 'rkam_sumber': {

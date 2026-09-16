@@ -25,11 +25,11 @@ let h=`<div class="flex justify-between items-center mb-3"><b>${id?'Edit':'Tamba
 <div><label class="text-xs font-bold">Tanggal *</label><input type="date" name="tanggal_transaksi" value="${d.tanggal_transaksi||''}" class="w-full border rounded p-2"></div>
 <div><label class="text-xs font-bold">Nomor Bukti (Kode Kegiatan)</label><select name="nomor_bukti" id="rlBukti" onchange="syncRekByBukti()" class="w-full border rounded p-2"></select></div>
 <div><label class="text-xs font-bold">Sumber Dana</label><select name="sumber_dana_id" class="w-full border rounded p-2"><option value="">-</option>${SUM.map(s=>`<option value="${s.id}" ${d.sumber_dana_id==s.id?'selected':''}>${s.nama_sumber_dana}</option>`).join('')}</select></div>
-<div><label class="text-xs font-bold">Kode Rekening (Ikut Kegiatan)</label><select name="kode_rekening" id="rlRek" class="w-full border rounded p-2"></select></div>
+<div><label class="text-xs font-bold">Kode Rekening (Ikut Kegiatan)</label><select name="kode_rekening" id="rlRek" onchange="syncRealByItem()" class="w-full border rounded p-2"></select></div>
 <div id="rekInfo" class="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-2.5 text-xs"></div>
 <div class="md:col-span-2"><label class="text-xs font-bold">Uraian *</label><input name="uraian" required value="${(d.uraian||'').replaceAll('"','')}" class="w-full border rounded p-2"></div>
 <div><label class="text-xs font-bold">Volume</label><input type="number" min="0" step="1" name="volume" id="rv" value="${Math.round(d.volume??1)}" oninput="rcalc()" class="w-full border rounded p-2"></div>
-<div><label class="text-xs font-bold">Harga Satuan (Rp)</label><input type="text" inputmode="numeric" data-money data-dec="0" name="harga" id="rh" value="${d.harga??0}" oninput="rcalc()" class="w-full border rounded p-2"></div>
+<div><label class="text-xs font-bold">Harga Satuan (Rp)</label><input type="text" inputmode="numeric" data-money data-dec="0" name="harga" id="rh" value="${d.harga??0}" oninput="rcalc()" class="w-full border rounded p-2"><input type="hidden" name="satuan" value="${d.satuan||''}"></div>
 <div><label class="text-xs font-bold">Vendor / Penerima</label><input name="penerima_vendor" value="${d.penerima_vendor||''}" class="w-full border rounded p-2"></div>
 <div><label class="text-xs font-bold">Nomor Nota</label><input name="nomor_nota" value="${d.nomor_nota||''}" class="w-full border rounded p-2"></div>
 <div><label class="text-xs font-bold">Bukti (JPG/PNG/PDF Max <?=MAX_UPLOAD_MB?>MB)</label><input type="file" name="bukti" accept=".jpg,.jpeg,.png,.pdf" class="w-full border rounded p-2"></div>
@@ -60,7 +60,7 @@ list=(j.ok&&j.data)?j.data:[];
 rkamItemsMap.set(String(ks.value),list);
 }catch(e){err('Gagal muat rekening: '+(e.message||e));}
 if(!list.length){rs.innerHTML=`<option value="">- Item RKAM Kosong -</option>`;}
-else{rs.innerHTML=list.map((it,i)=>{const kr=(it.kode_rekening||'').trim();const val=kr||('ITEM-'+it.id);const lb=(kr?kr+' — ':'')+(it.nama_rekening||it.uraian||'Item RKAM');const sel=curRek?(String(curRek)===String(val)||String(curRek)===String(kr)):(!curRek&&i===0);return `<option value="${String(val).replaceAll('"','')}" ${sel?'selected':''}>${String(lb).replace(/</g,'&lt;')}</option>`;}).join('');}
+else{rs.innerHTML=list.map((it,i)=>{const kr=(it.kode_rekening||'').trim();const val='ITEM-'+it.id;const lb=(kr?kr+' — ':'')+(it.nama_rekening||it.uraian||'Item RKAM');const sel=curRek?(String(curRek)===String(val)||String(curRek)===String(kr)):(!curRek&&i===0);return `<option value="${String(val).replaceAll('"','')}" ${sel?'selected':''}>${String(lb).replace(/</g,'&lt;')}</option>`;}).join('');}
 syncRekByBukti(curRek);
 if(typeof ddify==='function')ddify(document.getElementById('modalBox'));
 if(typeof bindMoney==='function')bindMoney(document.getElementById('modalBox'));
@@ -69,17 +69,31 @@ rcalc();
 function syncRekByBukti(curRek){
 const ks=document.getElementById('rlKeg'),bs=document.getElementById('rlBukti'),rs=document.getElementById('rlRek');
 if(!ks||!bs||!rs)return;
-if(curRek){rs.value=curRek;if(typeof ddRefresh==='function')ddRefresh(rs);return;}
 const items=rkamItemsMap.get(String(ks.value))||[];
 if(!items.length)return;
+if(curRek){const curItem=items.find(it=>String(curRek)===String('ITEM-'+it.id)||String(curRek)===String((it.kode_rekening||'').trim()))||items[0];rs.value='ITEM-'+curItem.id;syncRealByItem(curItem);if(typeof ddRefresh==='function')ddRefresh(rs);return;}
 const k=RK.find(x=>String(x.id)===String(ks.value));
 let item=null;
 if(k&&bs.value===k.nomor_dokumen)item=items.find(it=>String(it.id)===String(items[0].id));
 if(!item)item=items.find(it=>String((it.kode_rekening||'').trim())===String(bs.value));
 if(!item)item=items[0];
-const kr=(item.kode_rekening||'').trim();
-rs.value=kr||('ITEM-'+item.id);
+rs.value='ITEM-'+item.id;
+syncRealByItem(item);
 if(typeof ddRefresh==='function')ddRefresh(rs);
+}
+function syncRealByItem(item){
+const ks=document.getElementById('rlKeg'),rs=document.getElementById('rlRek');
+if(!ks||!rs)return;
+const items=rkamItemsMap.get(String(ks.value))||[];
+if(!item)item=items.find(it=>String(rs.value)===String((it.kode_rekening||'').trim())||String(rs.value)===String('ITEM-'+it.id));
+if(!item)return;
+const ura=document.querySelector('#fReal [name=uraian]'),vol=document.getElementById('rv'),hr=document.getElementById('rh'),sat=document.querySelector('#fReal [name=satuan]');
+if(ura&&!ura.value.trim())ura.value=item.uraian||'';
+if(vol)vol.value=Math.max(0,Math.round(parseFloat(item.volume||1)||1));
+if(hr)hr.value=Math.round(parseFloat(item.harga_satuan||0)||0);
+if(sat)sat.value=item.satuan_text||'';
+if(typeof bindMoney==='function')bindMoney(document.getElementById('modalBox'));
+rcalc();
 }
 async function chgKeg(){
 const ks=document.getElementById('rlKeg');
@@ -113,6 +127,6 @@ f.set('over_reason',rr.value);
 const r2=await fetch(BASE+'api/x',{method:'POST',body:f});const j2=await r2.json();
 if(j2.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else err(j2.msg||'Gagal');}
 async function realDel(id){if(!await ask('Hapus transaksi ini?','Total realisasi ikut berubah.','Ya, Hapus'))return;const j=await api('x',{act:'realisasi_delete',id});if(j.ok){ok('Dihapus');setTimeout(()=>location.reload(),800);}else err(j.msg);}
-window.realForm=realForm;window.realSave=realSave;window.realDel=realDel;window.rcalc=rcalc;window.fillKeg=fillKeg;window.fillSumber=fillSumber;window.chgKeg=chgKeg;window.syncRekByBukti=syncRekByBukti;window.parseID=parseID;window.fmtID=fmtID;
+window.realForm=realForm;window.realSave=realSave;window.realDel=realDel;window.rcalc=rcalc;window.fillKeg=fillKeg;window.fillSumber=fillSumber;window.chgKeg=chgKeg;window.syncRekByBukti=syncRekByBukti;window.syncRealByItem=syncRealByItem;window.parseID=parseID;window.fmtID=fmtID;
 (function(){const b=document.getElementById('btnAddReal');if(b)b.addEventListener('click',ev=>{ev.preventDefault();window.realForm(0);});})();
 </script>
