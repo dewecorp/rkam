@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS sumber_dana (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   kode VARCHAR(20) NOT NULL UNIQUE,
   nama_sumber_dana VARCHAR(100) NOT NULL,
+  jumlah DECIMAL(18,2) NOT NULL DEFAULT 0,
   keterangan TEXT NULL,
   status ENUM('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -139,6 +140,7 @@ CREATE TABLE IF NOT EXISTS kegiatan (
   satuan_id INT UNSIGNED NULL,
   waktu_pelaksanaan VARCHAR(100) NULL,
   penanggung_jawab VARCHAR(100) NULL,
+  guru_id INT UNSIGNED NULL,
   prioritas ENUM('rendah','sedang','tinggi','mendesak') NOT NULL DEFAULT 'sedang',
   status ENUM('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
   keterangan TEXT NULL,
@@ -146,6 +148,7 @@ CREATE TABLE IF NOT EXISTS kegiatan (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (bidang_id) REFERENCES bidang(id) ON DELETE SET NULL,
   FOREIGN KEY (satuan_id) REFERENCES satuan(id) ON DELETE SET NULL,
+  FOREIGN KEY (guru_id) REFERENCES guru(id) ON DELETE SET NULL,
   INDEX idx_bidang (bidang_id),
   INDEX idx_kode (kode)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -344,15 +347,15 @@ INSERT INTO bidang (kode,nama_bidang,keterangan,status) VALUES
 ('B13','Pemeliharaan','', 'aktif'),
 ('B99','Lainnya','', 'aktif');
 
-INSERT INTO sumber_dana (kode,nama_sumber_dana,keterangan,status) VALUES
-('BOS','BOS','Bantuan Operasional Sekolah','aktif'),
-('BOP','BOP','Bantuan Operasional Pendidikan','aktif'),
-('KOM','Komite','Iuran Komite','aktif'),
-('YSN','Yayasan','Dana Yayasan','aktif'),
-('MDR','Dana Mandiri','', 'aktif'),
-('SMB','Sumbangan','', 'aktif'),
-('HBH','Hibah','', 'aktif'),
-('LLN','Lainnya','', 'aktif');
+INSERT INTO sumber_dana (kode,nama_sumber_dana,jumlah,keterangan,status) VALUES
+('BOS','BOS',0,'Bantuan Operasional Sekolah','aktif'),
+('BOP','BOP',0,'Bantuan Operasional Pendidikan','aktif'),
+('KOM','Komite',0,'Iuran Komite','aktif'),
+('YSN','Yayasan',0,'Dana Yayasan','aktif'),
+('MDR','Dana Mandiri',0,'', 'aktif'),
+('SMB','Sumbangan',0,'', 'aktif'),
+('HBH','Hibah',0,'', 'aktif'),
+('LLN','Lainnya',0,'', 'aktif');
 
 INSERT INTO jenis_belanja (kode,nama,keterangan,status) VALUES
 ('JB01','Belanja Barang','','aktif'),
@@ -371,6 +374,25 @@ INSERT INTO satuan (kode,nama_satuan,status) VALUES
 ('paket','paket','aktif'),('orang','orang','aktif'),('kegiatan','kegiatan','aktif'),
 ('bulan','bulan','aktif'),('hari','hari','aktif'),('meter','meter','aktif'),
 ('liter','liter','aktif'),('set','set','aktif'),('lembar','lembar','aktif'),('lainnya','lainnya','aktif');
+
+CREATE TABLE IF NOT EXISTS guru (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  kode VARCHAR(20) NULL UNIQUE,
+  nip VARCHAR(50) NULL,
+  nama VARCHAR(150) NOT NULL,
+  jabatan VARCHAR(100) NULL DEFAULT 'Guru',
+  mapel VARCHAR(100) NULL,
+  no_hp VARCHAR(20) NULL,
+  status ENUM('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
+  keterangan TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO guru (kode,nama,jabatan,mapel,status) VALUES
+('GRU-001','BUDI ASHARI','Guru','Umum','aktif'),
+('GRU-002','ASRORI','Guru','Umum','aktif')
+ON DUPLICATE KEY UPDATE nama=VALUES(nama);
 
 INSERT INTO rekening (kode,nama_rekening,kelompok,jenis_belanja_id,keterangan,status) VALUES
 ('5.1.01','Belanja ATK','Belanja Barang',7,'','aktif'),

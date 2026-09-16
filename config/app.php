@@ -1,7 +1,13 @@
 <?php
 define('APP_NAME','SIRKAM');
 define('APP_VERSION','1.0.0');
-define('BASE_URL','/rkam/');
+if(!defined('BASE_URL')){
+$__sn=str_replace('\\','/',$_SERVER['SCRIPT_NAME']??'/index.php');
+$__bd=rtrim(str_replace('\\','/',dirname($__sn)),'/');
+if($__bd===''||$__bd==='.'||$__bd==='\\')$__bd='';
+define('BASE_URL',$__bd.'/');
+unset($__sn,$__bd);
+}
 define('UPLOAD_DIR',__DIR__.'/../uploads/bukti/');
 define('LOGO_DIR',__DIR__.'/../uploads/logo/');
 define('MAX_UPLOAD_MB',5);

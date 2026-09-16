@@ -1,6 +1,6 @@
 <?php
 $id=(int)($_GET['id']??0);
-$s=$pdo->prepare("SELECT k.*,b.nama_bidang,t.tahun FROM rkam k LEFT JOIN bidang b ON b.id=k.bidang_id LEFT JOIN tahun_anggaran t ON t.id=k.tahun_id WHERE k.id=?");$s->execute([$id]);$r=$s->fetch();
+$s=$pdo->prepare("SELECT k.*,COALESCE(gb.nama_bidang,b.nama_bidang) AS nama_bidang,t.tahun FROM rkam k LEFT JOIN bidang b ON b.id=k.bidang_id LEFT JOIN kegiatan g ON g.id=k.kegiatan_id LEFT JOIN bidang gb ON gb.id=g.bidang_id LEFT JOIN tahun_anggaran t ON t.id=k.tahun_id WHERE k.id=?");$s->execute([$id]);$r=$s->fetch();
 if(!$r){echo '<div class="bg-white p-8 rounded shadow text-center">Data tidak ditemukan.</div>';return;}
 $items=$pdo->prepare("SELECT * FROM rkam_items WHERE rkam_id=?");$items->execute([$id]);$items=$items->fetchAll();
 $sm=$pdo->prepare("SELECT rs.*,s.nama_sumber_dana FROM rkam_sumber_dana rs JOIN sumber_dana s ON s.id=rs.sumber_dana_id WHERE rs.rkam_id=?");$sm->execute([$id]);$sm=$sm->fetchAll();
@@ -27,6 +27,7 @@ $role=Auth::role();
 <?php if(in_array($role,['superadmin','bendahara','operator'])&&!in_array($r['status'],['dikunci'])):?><button onclick="rkamForm(<?=$id?>)" title="Edit" class="btn-ic btn-edit"><i class="fa-solid fa-pen-to-square"></i></button><?php endif;?>
 <?php if(in_array($role,['superadmin','bendahara','operator'])&&$r['status']==='draft'):?><button onclick="setStatus(<?=$id?>,'diajukan')" title="Ajukan" class="btn-ic btn-dl"><i class="fa-solid fa-paper-plane"></i></button><?php endif;?>
 <?php if(in_array($role,['superadmin','bendahara','operator'])&&in_array($r['status'],['ditolak','direvisi'])):?><button onclick="setStatus(<?=$id?>,'diajukan')" title="Ajukan Ulang" class="btn-ic btn-dl"><i class="fa-solid fa-paper-plane"></i></button><?php endif;?>
+<?php if(in_array($role,['superadmin','kepala_madrasah'])&&$r['status']==='draft'):?><span class="text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-3 py-1.5">Menunggu bendahara menekan Ajukan. Tombol Verifikasi muncul setelah status Diajukan.</span><?php endif;?>
 <?php if(in_array($role,['superadmin','kepala_madrasah'])):?>
 <?php if($r['status']==='diajukan'):?><button onclick="setStatus(<?=$id?>,'diverifikasi')" title="Verifikasi" class="btn-ic btn-view"><i class="fa-solid fa-circle-check"></i></button><?php endif;?>
 <?php if($r['status']==='diverifikasi'):?><button onclick="setStatus(<?=$id?>,'disetujui')" title="Setujui" class="btn-ic btn-dl"><i class="fa-solid fa-thumbs-up"></i></button><?php endif;?>

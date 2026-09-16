@@ -1,6 +1,5 @@
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteBase /rkam/
 Options -Indexes
 
 RewriteRule ^backup(/.*)?$ index.php?url=backup$1 [QSA,L]

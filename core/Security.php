@@ -11,7 +11,7 @@ $_SESSION['LAST_ACTIVITY']=time();
 }
 public static function e($s){return htmlspecialchars((string)($s??''),ENT_QUOTES,'UTF-8');}
 public static function rupiah($n){return 'Rp '.number_format((float)$n,0,',','.');}
-public static function num($v){$v=preg_replace('/[^0-9.\-]/','',(string)$v);return $v===''||!is_numeric($v)?0:(float)$v;}
+public static function num($v){$v=trim((string)$v);$v=preg_replace('/[^0-9,\.\-]/','',$v);if($v===''||$v==='-'||$v==='.'||$v==='-,')return 0;if(strpos($v,',')!==false){$v=str_replace('.','',$v);$v=str_replace(',','.',$v);}else{if(preg_match('/^\-?\d{1,3}(\.\d{3})+$/',$v))$v=str_replace('.','',$v);}return $v===''||!is_numeric($v)?0:(float)$v;}
 public static function int($v){return (int)self::num($v);}
 public static function money($v){return round(self::num($v),2);}
 public static function vol($v){$n=self::num($v);if($n<0)$n=0;return (int)round($n);}

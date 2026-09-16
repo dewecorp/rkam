@@ -50,20 +50,21 @@ $pdo->commit();Security::json(['ok'=>true,'tahun'=>$t['tahun']]);
 case 'master_save': {
 Rbac::check('dashboard');
 $t=$_POST['table']??'';$id=(int)($_POST['id']??0);
-$allow=['bidang'=>['kode','nama_bidang','keterangan','status'],'sumber_dana'=>['kode','nama_sumber_dana','keterangan','status'],'jenis_belanja'=>['kode','nama','keterangan','status'],'satuan'=>['kode','nama_satuan','keterangan','status'],'rekening'=>['kode','nama_rekening','kelompok','jenis_belanja_id','keterangan','status'],'kegiatan'=>['kode','nama_kegiatan','bidang_id','indikator','tujuan','sasaran','volume','satuan_id','waktu_pelaksanaan','penanggung_jawab','prioritas','status','keterangan'],'tahun_anggaran'=>['tahun','tanggal_mulai','tanggal_selesai','status','keterangan']];
+$allow=['bidang'=>['kode','nama_bidang','keterangan','status'],'sumber_dana'=>['kode','nama_sumber_dana','jumlah','keterangan','status'],'jenis_belanja'=>['kode','nama','keterangan','status'],'satuan'=>['kode','nama_satuan','keterangan','status'],'rekening'=>['kode','nama_rekening','kelompok','jenis_belanja_id','keterangan','status'],'kegiatan'=>['kode','nama_kegiatan','bidang_id','indikator','tujuan','sasaran','volume','satuan_id','waktu_pelaksanaan','guru_id','penanggung_jawab','prioritas','status','keterangan'],'guru'=>['kode','nama','nip','jabatan','mapel','no_hp','status','keterangan'],'tahun_anggaran'=>['tahun','tanggal_mulai','tanggal_selesai','status','keterangan']];
 if(!isset($allow[$t]))Security::json(['ok'=>false,'msg'=>'Tabel invalid'],400);
 if(!in_array(Auth::role(),['superadmin','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
 $f=$allow[$t];$d=[];foreach($f as $c){$v=trim($_POST[$c]??'');$d[$c]=($v===''||strtolower($v)==='-'?null:$v);}
 // normalisasi angka & FK kosong -> NULL
-foreach(['bidang_id','satuan_id','jenis_belanja_id'] as $k){if(array_key_exists($k,$d)){$d[$k]=($d[$k]===null||$d[$k]==='')?null:(int)$d[$k];}}
+foreach(['bidang_id','satuan_id','jenis_belanja_id','guru_id'] as $k){if(array_key_exists($k,$d)){$d[$k]=($d[$k]===null||$d[$k]==='')?null:(int)$d[$k];}}
 if(array_key_exists('volume',$d)){$d['volume']=($d['volume']===null||$d['volume']==='')?1:(float)$d['volume'];}
+if(array_key_exists('jumlah',$d)){$d['jumlah']=($d['jumlah']===null||$d['jumlah']==='')?0:(float)$d['jumlah'];}
 if(array_key_exists('tahun',$d)){if($d['tahun']===null||$d['tahun']==='')Security::json(['ok'=>false,'msg'=>'Tahun wajib diisi']);$d['tahun']=(int)$d['tahun'];}
 foreach(['tanggal_mulai','tanggal_selesai'] as $k){if(array_key_exists($k,$d)&&($d[$k]===null||$d[$k]===''))$d[$k]=null;}
 foreach(['status','prioritas'] as $k){if(array_key_exists($k,$d)&&$d[$k]!==null)$d[$k]=strtolower(trim($d[$k]));}
 // validasi wajib
 if($t==='tahun_anggaran'&&$d['status']==='aktif'){$pdo->query("UPDATE tahun_anggaran SET status='selesai' WHERE status='aktif'");}
 // kode otomatis bila kosong (sebelum validasi wajib)
-if(in_array($t,['bidang','sumber_dana','jenis_belanja','satuan','rekening','kegiatan'])&&$d['kode']===null){
+if(in_array($t,['bidang','sumber_dana','jenis_belanja','satuan','rekening','kegiatan','guru'])&&$d['kode']===null){
 if($id>0){$o=$pdo->prepare("SELECT kode FROM `$t` WHERE id=?");$o->execute([$id]);$d['kode']=$o->fetchColumn()?:Helper::autoKode($pdo,$t,'');}
 else{
 $nm=$t==='bidang'?($d['nama_bidang']??''):($t==='sumber_dana'?($d['nama_sumber_dana']??''):($t==='satuan'?($d['nama_satuan']??''):($t==='rekening'?($d['nama_rekening']??''):($t==='kegiatan'?($d['nama_kegiatan']??''):($d['nama']??'')))));
@@ -71,21 +72,24 @@ $d['kode']=Helper::autoKode($pdo,$t,$nm);
 }
 }
 if($t==='kegiatan'&&($d['kode']===null||$d['nama_kegiatan']===null))Security::json(['ok'=>false,'msg'=>'Kode & Nama Kegiatan wajib']);
+if($t==='kegiatan'&&!empty($d['guru_id'])){$g=$pdo->prepare("SELECT nama FROM guru WHERE id=? AND status='aktif'");$g->execute([(int)$d['guru_id']]);$gn=$g->fetchColumn();if($gn)$d['penanggung_jawab']=$gn;}
 if($t==='bidang'&&$d['nama_bidang']===null)Security::json(['ok'=>false,'msg'=>'Nama Bidang wajib']);
 if($t==='sumber_dana'&&$d['nama_sumber_dana']===null)Security::json(['ok'=>false,'msg'=>'Nama Sumber Dana wajib']);
 if($t==='jenis_belanja'&&$d['nama']===null)Security::json(['ok'=>false,'msg'=>'Nama wajib']);
 if($t==='satuan'&&$d['nama_satuan']===null)Security::json(['ok'=>false,'msg'=>'Nama Satuan wajib']);
 if($t==='rekening'&&($d['kode']===null||$d['nama_rekening']===null))Security::json(['ok'=>false,'msg'=>'Kode & Nama Rekening wajib']);
+if($t==='guru'&&($d['kode']===null||$d['nama']===null))Security::json(['ok'=>false,'msg'=>'Kode & Nama Guru wajib']);
 try{
 if($id>0){$set=implode(',',array_map(fn($c)=>"$c=?",array_keys($d)));$s=$pdo->prepare("UPDATE $t SET $set WHERE id=?");$s->execute([...array_values($d),$id]);Logger::log($pdo,'edit',$t,$id,null,$d);}
-else{$s=$pdo->prepare("INSERT INTO $t(".implode(',',array_keys($d)).") VALUES(".rtrim(str_repeat('?,',count($d)),',').")");$s->execute(array_values($d));Logger::log($pdo,'tambah',$t,$pdo->lastInsertId(),null,$d);}
+else{$s=$pdo->prepare("INSERT INTO $t(".implode(',',array_keys($d)).") VALUES(".rtrim(str_repeat('?,',count($d)),',').")");$s->execute(array_values($d));$id=(int)$pdo->lastInsertId();Logger::log($pdo,'tambah',$t,$id,null,$d);}
+if($t==='kegiatan'){$n=Helper::syncKegiatanToRkam($pdo,$id);Security::json(['ok'=>true,'msg'=>$n>0?"Tersimpan + sinkron $n RKAM draft":"Tersimpan"]);}
 }catch(Exception $ex){error_log('master_save: '.$ex->getMessage());$msg='Gagal simpan';if(stripos($ex->getMessage(),'Duplicate')!==false)$msg='Kode sudah dipakai';Security::json(['ok'=>false,'msg'=>$msg]);}
 Security::json(['ok'=>true,'msg'=>'Tersimpan']);
 }
 case 'master_delete': {
 if(!in_array(Auth::role(),['superadmin','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
 $t=$_POST['table']??'';$id=(int)($_POST['id']??0);
-if(!in_array($t,['bidang','sumber_dana','jenis_belanja','satuan','rekening','kegiatan','tahun_anggaran']))Security::json(['ok'=>false,'msg'=>'Invalid'],400);
+if(!in_array($t,['bidang','sumber_dana','jenis_belanja','satuan','rekening','kegiatan','guru','tahun_anggaran']))Security::json(['ok'=>false,'msg'=>'Invalid'],400);
 try{$pdo->prepare("DELETE FROM $t WHERE id=?")->execute([$id]);Logger::log($pdo,'hapus',$t,$id);}catch(Exception $ex){Security::json(['ok'=>false,'msg'=>'Data dipakai relasi lain']);}
 Security::json(['ok'=>true]);
 }
@@ -93,15 +97,29 @@ case 'rkam_save': {
 if(!Rbac::can('rkam.create')&&!Rbac::can('rkam.view'))Security::json(['ok'=>false,'msg'=>'No permission'],403);
 if(!in_array(Auth::role(),['superadmin','bendahara','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
 $id=(int)($_POST['id']??0);
-$tahun_id=(int)($_POST['tahun_id']??0);$bidang_id=(int)($_POST['bidang_id']??0)?:null;
-$nama=trim($_POST['nama_kegiatan']??'');if(!$tahun_id||!$nama)Security::json(['ok'=>false,'msg'=>'Tahun & nama wajib']);
+$tahun_id=(int)($_POST['tahun_id']??0);$kegId=(int)($_POST['kegiatan_id']??0);
+if(!$tahun_id)Security::json(['ok'=>false,'msg'=>'Langkah 1 belum: pilih Tahun Anggaran']);
+if(!$kegId)Security::json(['ok'=>false,'msg'=>'Langkah 2 belum: pilih Kegiatan Master']);
+$km=$pdo->prepare("SELECT k.*,b.nama_bidang FROM kegiatan k LEFT JOIN bidang b ON b.id=k.bidang_id WHERE k.id=? AND k.status='aktif'");$km->execute([$kegId]);$keg=$km->fetch();
+if(!$keg)Security::json(['ok'=>false,'msg'=>'Kegiatan Master tidak valid / nonaktif']);
+$km2=$pdo->prepare("SELECT k.*,g.nama AS guru_nama FROM kegiatan k LEFT JOIN guru g ON g.id=k.guru_id WHERE k.id=?");$km2->execute([$kegId]);$keg=$km2->fetch()?:$keg;
+$pjNow=trim(($keg['guru_nama']??'')!==''?($keg['guru_nama']??''):($keg['penanggung_jawab']??''));
+if($pjNow==='')Security::json(['ok'=>false,'msg'=>'Penanggung jawab kosong di Master ('.$keg['nama_kegiatan'].'). Pilih Guru di Master → Kegiatan dulu.']);
+$bidang_id=$keg['bidang_id']?:null;
+$nama=$keg['nama_kegiatan'];$kode=$keg['kode'];
 if($id>0){$c=$pdo->prepare("SELECT * FROM rkam WHERE id=?");$c->execute([$id]);$old=$c->fetch();if(!$old)Security::json(['ok'=>false,'msg'=>'Not found'],404);
 if(in_array($old['status'],['dikunci'])&&!in_array(Auth::role(),['superadmin','kepala_madrasah']))Security::json(['ok'=>false,'msg'=>'RKAM telah dikunci dan tidak dapat diubah']);
 if(in_array($old['status'],['diajukan','diverifikasi','disetujui'])&&!in_array(Auth::role(),['superadmin','kepala_madrasah']))Security::json(['ok'=>false,'msg'=>'Status '.$old['status'].' hanya bisa diubah kepala/superadmin. Minta revisi dulu.']); }
 $items=json_decode($_POST['items']??'[]',true)?:[];$sumber=json_decode($_POST['sumber']??'[]',true)?:[];
 if(count($items)==0)Security::json(['ok'=>false,'msg'=>'Minimal 1 item anggaran']);
+$kmS=$pdo->prepare("SELECT k.*,s.nama_satuan AS satuan_nama FROM kegiatan k LEFT JOIN satuan s ON s.id=k.satuan_id WHERE k.id=?");$kmS->execute([$kegId]);$kegS=$kmS->fetch()?:$keg;
+$expU=trim($kegS['nama_kegiatan']??'');$expV=(int)round((float)($kegS['volume']??1));$expS=trim($kegS['satuan_nama']??'');
 $total=0;$clean=[];
 foreach($items as $it){$vol=Security::vol($it['volume']??1);$hr=Security::money($it['harga_satuan']??0);$j=round($vol*$hr,2);$total=round($total+$j,2);
+$uU=trim($it['uraian']??'');$uV=(int)$vol;$uS=trim($it['satuan']??'');
+if($expU!==''&&$uU!==$expU)Security::json(['ok'=>false,'msg'=>'Uraian wajib sama dengan kegiatan master ('.$expU.')']);
+if($uV!==$expV)Security::json(['ok'=>false,'msg'=>'Volume wajib sama dengan master ('.$expV.')']);
+if($expS!==''&&$uS!==$expS)Security::json(['ok'=>false,'msg'=>'Satuan wajib sama dengan master ('.$expS.')']);
 $clean[]= ['rekening_id'=>(int)($it['rekening_id']??0)?:null,'kode_rekening'=>substr(trim($it['kode_rekening']??''),0,50),'uraian'=>substr(trim($it['uraian']??''),0,255),'volume'=>$vol,'satuan_text'=>substr(trim($it['satuan']??''),0,50),'harga_satuan'=>$hr,'jumlah'=>$j,'keterangan'=>''];}
 if($total<=0)Security::json(['ok'=>false,'msg'=>'Total harus > 0']);
 $tsum=0;$validS=[];$seen=[];
@@ -114,7 +132,8 @@ $chk=$pdo->prepare("SELECT COUNT(*) FROM sumber_dana WHERE id=? AND status='akti
 foreach($validS as $vs){$chk->execute([$vs['id']]);if(!$chk->fetchColumn())Security::json(['ok'=>false,'msg'=>'Sumber dana tidak valid']);}
 if(abs($tsum-$total)>0.01)Security::json(['ok'=>false,'msg'=>'Total sumber dana ('.number_format($tsum,0).') != total anggaran ('.number_format($total,0).')']);
 $pdo->beginTransaction();try{
-$base=['tahun_id'=>$tahun_id,'bidang_id'=>$bidang_id,'kegiatan_id'=>!empty($_POST['kegiatan_id'])?(int)$_POST['kegiatan_id']:null,'kode_kegiatan'=>substr(trim($_POST['kode_kegiatan']??''),0,50),'nama_kegiatan'=>$nama,'tujuan'=>$_POST['tujuan']??null,'sasaran'=>$_POST['sasaran']??null,'indikator'=>$_POST['indikator']??null,'penanggung_jawab'=>$_POST['penanggung_jawab']??null,'waktu_pelaksanaan'=>$_POST['waktu_pelaksanaan']??null,'prioritas'=>in_array($_POST['prioritas']??'', ['rendah','sedang','tinggi','mendesak'])?$_POST['prioritas']:'sedang','keterangan'=>$_POST['keterangan']??null,'total_anggaran'=>$total,'updated_by'=>Auth::id()];
+$base=['tahun_id'=>$tahun_id,'bidang_id'=>$bidang_id,'kegiatan_id'=>$kegId,'kode_kegiatan'=>substr($kode,0,50),'nama_kegiatan'=>$nama,'tujuan'=>$keg['tujuan']??null,'sasaran'=>$keg['sasaran']??null,'indikator'=>$keg['indikator']??null,'penanggung_jawab'=>$pjNow,'waktu_pelaksanaan'=>($keg['waktu_pelaksanaan']??null)?substr($keg['waktu_pelaksanaan'],0,10):null,'prioritas'=>($keg['prioritas']??'sedang'),'keterangan'=>$_POST['keterangan']??null,'total_anggaran'=>$total,'updated_by'=>Auth::id()];
+if(!$id){$dup=$pdo->prepare("SELECT COUNT(*) FROM rkam WHERE tahun_id=? AND kegiatan_id=?");$dup->execute([$tahun_id,$kegId]);if($dup->fetchColumn())Security::json(['ok'=>false,'msg'=>'Kegiatan ini sudah ada di RKAM tahun ini. Edit data yang ada, jangan tambah ganda.']);}
 if($id>0){$set=implode(',',array_map(fn($k)=>"$k=?",array_keys($base)));$pdo->prepare("UPDATE rkam SET $set WHERE id=?")->execute([...array_values($base),$id]);$rid=$id;$pdo->prepare("DELETE FROM rkam_items WHERE rkam_id=?")->execute([$rid]);$pdo->prepare("DELETE FROM rkam_sumber_dana WHERE rkam_id=?")->execute([$rid]);Logger::log($pdo,'edit','rkam',$rid,$old,$base);}
 else{$base['created_by']=Auth::id();$base['status']='draft';$pdo->prepare("INSERT INTO rkam(".implode(',',array_keys($base)).") VALUES(".rtrim(str_repeat('?,',count($base)),',').")")->execute(array_values($base));$rid=(int)$pdo->lastInsertId();
 $km=Helper::setting($pdo,'kode_madrasah','MI-SF');
@@ -154,7 +173,7 @@ case 'realisasi_save': {
 if(!in_array(Auth::role(),['superadmin','bendahara']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
 $id=(int)($_POST['id']??0);$rkam_id=(int)($_POST['rkam_id']??0);
 $s=$pdo->prepare("SELECT * FROM rkam WHERE id=?");$s->execute([$rkam_id]);$rk=$s->fetch();if(!$rk)Security::json(['ok'=>false,'msg'=>'RKAM invalid']);
-if(in_array($rk['status'],['draft','dikunci'])&&Auth::role()!=='superadmin')Security::json(['ok'=>false,'msg'=>'RKAM status '.$rk['status']]);
+if(in_array($rk['status'],['draft','diajukan','diverifikasi','ditolak','direvisi','dikunci'])&&Auth::role()!=='superadmin')Security::json(['ok'=>false,'msg'=>'Realisasi wajib setelah RKAM Disetujui (status kini: '.$rk['status'].'). Ajukan & setujui dulu.']);
 $vol=Security::vol($_POST['volume']??1);$hr=Security::money($_POST['harga']??0);$jum=round($vol*$hr,2);
 $tot=$pdo->prepare("SELECT COALESCE(SUM(jumlah),0) FROM realisasi WHERE rkam_id=?".($id?" AND id<>$id":''));$tot->execute([$rkam_id]);$used=(float)$tot->fetchColumn();
 if($used+$jum>(float)$rk['total_anggaran']+0.01){$allow=($_POST['allow_over']??'')==='1';$reason=trim($_POST['over_reason']??'');
@@ -168,7 +187,10 @@ if(!isset($okm[$mime]))Security::json(['ok'=>false,'msg'=>'File harus JPG/PNG/PD
 $ext=$okm[$mime];if(!is_dir(UPLOAD_DIR))mkdir(UPLOAD_DIR,0755,true);$fn=date('YmdHis').'_'.bin2hex(random_bytes(8)).'.'.$ext;
 if(!move_uploaded_file($_FILES['bukti']['tmp_name'],UPLOAD_DIR.$fn))Security::json(['ok'=>false,'msg'=>'Upload gagal']);}
 $d=['rkam_id'=>$rkam_id,'tahun_id'=>$rk['tahun_id'],'tanggal_transaksi'=>$_POST['tanggal_transaksi']??date('Y-m-d'),'nomor_bukti'=>substr($_POST['nomor_bukti']??'',0,100),'sumber_dana_id'=>(int)($_POST['sumber_dana_id']??0)?:null,'kode_rekening'=>substr($_POST['kode_rekening']??'',0,50),'uraian'=>substr(trim($_POST['uraian']??''),0,255),'volume'=>$vol,'satuan'=>substr($_POST['satuan']??'',0,50),'harga'=>$hr,'jumlah'=>$jum,'penerima_vendor'=>substr($_POST['penerima_vendor']??'',0,150),'nomor_nota'=>substr($_POST['nomor_nota']??'',0,100),'keterangan'=>$_POST['keterangan']??null,'allow_overbudget'=>$allow?1:0,'overbudget_reason'=>$reason,'created_by'=>Auth::id()];
-if(!$d['uraian']||!$d['tanggal_transaksi'])Security::json(['ok'=>false,'msg'=>'Uraian & tanggal wajib']);
+if(!$d['uraian']||!$d['tanggal_transaksi'])Security::json(['ok'=>false,'msg'=>'Langkah 2-3 belum: tanggal & uraian wajib']);
+if($d['sumber_dana_id']){$ckS=$pdo->prepare("SELECT COUNT(*) FROM rkam_sumber_dana WHERE rkam_id=? AND sumber_dana_id=?");$ckS->execute([$rkam_id,$d['sumber_dana_id']]);if(!$ckS->fetchColumn())Security::json(['ok'=>false,'msg'=>'Sumber dana tidak ada di RKAM terpilih. Pilih sesuai RKAM.']);}
+if($d['kode_rekening']){$ck=$pdo->prepare("SELECT COUNT(*) FROM rkam_items WHERE rkam_id=? AND kode_rekening=?");$ck->execute([$rkam_id,$d['kode_rekening']]);if(!$ck->fetchColumn())Security::json(['ok'=>false,'msg'=>'Kode rekening tidak ada di RKAM terpilih. Pilih dari dropdown.']);}
+if($d['nomor_bukti']){$okB=in_array($d['nomor_bukti'],[$rk['kode_kegiatan']??'', $rk['nomor_dokumen']??''],true);if(!$okB)Security::json(['ok'=>false,'msg'=>'Nomor bukti wajib kode/nomor dokumen RKAM terpilih.']);}
 $pdo->beginTransaction();try{
 if($id>0){if($fn)$d['bukti_file']=$fn;$set=implode(',',array_map(fn($k)=>"$k=?",array_keys($d)));$pdo->prepare("UPDATE realisasi SET $set WHERE id=?")->execute([...array_values($d),$id]);Logger::log($pdo,'edit','realisasi',$id);}
 else{$d['bukti_file']=$fn;$pdo->prepare("INSERT INTO realisasi(".implode(',',array_keys($d)).") VALUES(".rtrim(str_repeat('?,',count($d)),',').")")->execute(array_values($d));Logger::log($pdo,'tambah','realisasi',$pdo->lastInsertId(),null,$d);}
@@ -280,7 +302,7 @@ $pdo->exec("SET FOREIGN_KEY_CHECKS=1");
 Logger::log($pdo,'restore','database');Security::json(['ok'=>true,'statements'=>$ok]);
 }
 case 'master_opt': {
-Security::json(['ok'=>true,'data'=>['rekening'=>$pdo->query("SELECT * FROM rekening WHERE status='aktif' LIMIT 200")->fetchAll(),'satuan'=>$pdo->query("SELECT * FROM satuan WHERE status='aktif'")->fetchAll(),'sumber'=>$pdo->query("SELECT * FROM sumber_dana WHERE status='aktif'")->fetchAll(),'kegiatan'=>$pdo->query("SELECT * FROM kegiatan WHERE status='aktif' LIMIT 200")->fetchAll()]]);
+Security::json(['ok'=>true,'data'=>['rekening'=>$pdo->query("SELECT * FROM rekening WHERE status='aktif' LIMIT 200")->fetchAll(),'satuan'=>$pdo->query("SELECT * FROM satuan WHERE status='aktif'")->fetchAll(),'sumber'=>$pdo->query("SELECT * FROM sumber_dana WHERE status='aktif'")->fetchAll(),'kegiatan'=>$pdo->query("SELECT k.*,b.nama_bidang,s.nama_satuan AS satuan_nama,g.nama AS guru_nama FROM kegiatan k LEFT JOIN bidang b ON b.id=k.bidang_id LEFT JOIN satuan s ON s.id=k.satuan_id LEFT JOIN guru g ON g.id=k.guru_id WHERE k.status='aktif' ORDER BY k.nama_kegiatan LIMIT 200")->fetchAll()]]);
 }
 case 'kode_preview': {
 if(!in_array(Auth::role(),['superadmin','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
@@ -293,6 +315,18 @@ $id=(int)($_POST['id']??0);$s=$pdo->prepare("SELECT * FROM rkam WHERE id=?");$s-
 $i=$pdo->prepare("SELECT * FROM rkam_items WHERE rkam_id=?");$i->execute([$id]);
 $sm=$pdo->prepare("SELECT rs.*,s.nama_sumber_dana nama FROM rkam_sumber_dana rs JOIN sumber_dana s ON s.id=rs.sumber_dana_id WHERE rs.rkam_id=?");$sm->execute([$id]);
 $r['items']=$i->fetchAll();$r['sumber']=$sm->fetchAll();Security::json(['ok'=>true,'data'=>$r]);
+}
+case 'rkam_items': {
+$id=(int)($_POST['rkam_id']??0);
+if(!$id)Security::json(['ok'=>false,'msg'=>'Kegiatan wajib dipilih'],400);
+$i=$pdo->prepare("SELECT id,kode_rekening,uraian,satuan_text,harga_satuan FROM rkam_items WHERE rkam_id=? ORDER BY id");$i->execute([$id]);
+Security::json(['ok'=>true,'data'=>$i->fetchAll()]);
+}
+case 'rkam_sumber': {
+$id=(int)($_POST['rkam_id']??0);
+if(!$id)Security::json(['ok'=>false,'msg'=>'Kegiatan wajib dipilih'],400);
+$i=$pdo->prepare("SELECT rs.sumber_dana_id AS id,s.nama_sumber_dana,rs.jumlah FROM rkam_sumber_dana rs JOIN sumber_dana s ON s.id=rs.sumber_dana_id WHERE rs.rkam_id=? ORDER BY s.nama_sumber_dana");$i->execute([$id]);
+Security::json(['ok'=>true,'data'=>$i->fetchAll()]);
 }
 default: Security::json(['ok'=>false,'msg'=>'Unknown act'],400);
 }
