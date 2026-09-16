@@ -4,7 +4,7 @@ $sum=$pdo->query("SELECT * FROM sumber_dana WHERE status='aktif'")->fetchAll();
 $s=$pdo->query("SELECT r.*,k.nama_kegiatan FROM realisasi r JOIN rkam k ON k.id=r.rkam_id ORDER BY r.tanggal_transaksi DESC, r.id DESC LIMIT 200")->fetchAll();
 $can=in_array(Auth::role(),['superadmin','bendahara']);
 ?>
-<?php if($can):?><button onclick="realForm(0)" title="Tambah Realisasi" class="bg-emerald-700 hover:bg-emerald-800 text-white w-10 h-10 rounded-2xl text-sm mb-3 no-print shadow"><i class="fa-solid fa-plus"></i></button><?php endif;?>
+<?php if($can):?><button id="btnAddReal" onclick="window.realForm(0)" title="Tambah Realisasi" class="bg-emerald-700 hover:bg-emerald-800 text-white w-10 h-10 rounded-2xl text-sm mb-3 no-print shadow"><i class="fa-solid fa-plus"></i></button><?php endif;?>
 <div class="bg-white rounded shadow overflow-auto">
 <?php if(!$s):?><div class="p-10 text-center text-gray-500">Belum ada transaksi realisasi.</div>
 <?php else:?><table class="w-full text-sm min-w-[900px]"><thead><tr class="bg-gray-50 border-b text-left"><th class="p-2">Tanggal / Bukti</th><th class="p-2">Kegiatan</th><th class="p-2">Uraian</th><th class="p-2 text-right">Jumlah</th><th class="p-2">Bukti</th><th class="p-2 no-print">Aksi</th></tr></thead><tbody>
@@ -37,6 +37,16 @@ openModal(h,'md');rcalc();}
 function rcalc(){const v=Math.max(0,Math.round(parseFloat(document.getElementById('rv').value)||0)),h=parseFloat(document.getElementById('rh').value)||0;document.getElementById('rtot').innerText=rp(v*h);}
 async function realSave(e,id){e.preventDefault();const f=new FormData(e.target);f.append('csrf_token',CSRF);f.append('act','realisasi_save');f.append('id',id);
 const r=await fetch(BASE+'api/x',{method:'POST',body:f});const j=await r.json();
-if(j.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else{if(j.over){if(!await ask(j.msg,'Butuh izin khusus + alasan.','Tetap simpan'))return;f.set('allow_over','1');const rr=await Swal.fire({title:'Alasan overbudget',input:'text',inputPlaceholder:'Wajib isi...',showCancelButton:true,cancelButtonText:'Batal',confirmButtonText:'Simpan',confirmButtonColor:'#059669'});if(rr.isConfirmed&&rr.value){f.set('over_reason',rr.value);const r2=await fetch(BASE+'api/x',{method:'POST',body:f});const j2=await r2.json();if(j2.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else err(j2.msg);}}}else err(j.msg||'Gagal');}}
+if(j.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);return;}
+if(!j.over){err(j.msg||'Gagal');return;}
+if(!await ask(j.msg,'Butuh izin khusus + alasan.','Tetap simpan'))return;
+f.set('allow_over','1');
+const rr=await Swal.fire({title:'Alasan overbudget',input:'text',inputPlaceholder:'Wajib isi...',showCancelButton:true,cancelButtonText:'Batal',confirmButtonText:'Simpan',confirmButtonColor:'#059669'});
+if(!rr.isConfirmed||!rr.value)return;
+f.set('over_reason',rr.value);
+const r2=await fetch(BASE+'api/x',{method:'POST',body:f});const j2=await r2.json();
+if(j2.ok){ok('Tersimpan');setTimeout(()=>location.reload(),800);}else err(j2.msg||'Gagal');}
 async function realDel(id){if(!await ask('Hapus transaksi ini?','Total realisasi ikut berubah.','Ya, Hapus'))return;const j=await api('x',{act:'realisasi_delete',id});if(j.ok){ok('Dihapus');setTimeout(()=>location.reload(),800);}else err(j.msg);}
+window.realForm=realForm;window.realSave=realSave;window.realDel=realDel;window.rcalc=rcalc;
+(function(){const b=document.getElementById('btnAddReal');if(b)b.addEventListener('click',ev=>{ev.preventDefault();window.realForm(0);});})();
 </script>
