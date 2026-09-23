@@ -13,7 +13,7 @@ $trans=$pdo->prepare("SELECT r.*,k.nama_kegiatan FROM realisasi r JOIN rkam k ON
 <div class="flex flex-wrap items-center gap-2 mb-3 no-print text-sm">
 <div class="font-extrabold text-emerald-900"><?php $lt2=['rkam'=>'Laporan RKAM','realisasi'=>'Laporan Realisasi','sumber'=>'Laporan Per Sumber Dana','bidang'=>'Laporan Per Bidang','bulanan'=>'Laporan Bulanan','transaksi'=>'Laporan Transaksi']; echo $lt2[$jenis]??'Laporan'; ?></div>
 <form method="GET" action="<?=BASE_URL?>laporan/<?=$jenis?>" class="flex gap-2 ml-auto">
-<select name="tahun" class="border rounded p-1.5"><?php foreach($tahun as $t):?><option value="<?=$t['id']?>" <?=($tid==$t['id']?'selected':'')?>><?=$t['tahun']?></option><?php endforeach;?></select><button class="bg-slate-700 text-white px-3 rounded">Tampilkan</button></form>
+<select name="tahun" onchange="this.form.submit()" class="border rounded p-1.5"><?php foreach($tahun as $t):?><option value="<?=$t['id']?>" <?=($tid==$t['id']?'selected':'')?>><?=$t['tahun']?></option><?php endforeach;?></select></form>
 <a href="<?=BASE_URL?>print/<?=$jenis?>?tahun=<?=$tid?>" target="_blank" title="Cetak" class="bg-slate-700 hover:bg-slate-800 text-white w-9 h-9 rounded-xl inline-flex items-center justify-center"><i class="fa-solid fa-print"></i></a>
 <a href="<?=BASE_URL?>export/csv?jenis=<?=$jenis?>&tahun=<?=$tid?>" title="Excel/CSV" class="bg-green-700 hover:bg-green-800 text-white w-9 h-9 rounded-xl inline-flex items-center justify-center"><i class="fa-solid fa-file-excel"></i></a></div>
 <div class="bg-white rounded shadow p-4 overflow-auto text-sm">

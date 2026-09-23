@@ -18,14 +18,13 @@ $keg=$pdo->query("SELECT k.*,b.nama_bidang,s.nama_satuan AS satuan_nama,g.nama A
 $canAdd=in_array(Auth::role(),['superadmin','bendahara','operator']);
 ?>
 <div class="bg-white p-3 rounded shadow mb-3 no-print">
-<form class="flex flex-wrap gap-2 text-sm" method="GET" action="<?=BASE_URL?>rkam">
+<form class="flex flex-wrap gap-2 text-sm" method="GET" action="<?=BASE_URL?>rkam" id="fRkam">
 <input type="hidden" name="url" value="rkam">
-<select name="tahun" class="border rounded p-1.5"><?php foreach($tahun as $t):?><option value="<?=$t['id']?>" <?=($f_tahun==$t['id']?'selected':'')?>><?=$t['tahun']?> (<?=$t['status']?>)</option><?php endforeach;?></select>
-<select name="bidang" class="border rounded p-1.5"><option value="">Semua bidang</option><?php foreach($bid as $b):?><option value="<?=$b['id']?>" <?=($f_bidang==$b['id']?'selected':'')?>><?=Security::e($b['nama_bidang'])?></option><?php endforeach;?></select>
-<select name="sumber" class="border rounded p-1.5"><option value="">Semua sumber</option><?php foreach($sum as $x):?><option value="<?=$x['id']?>" <?=($f_sumber==$x['id']?'selected':'')?>><?=Security::e($x['nama_sumber_dana'])?></option><?php endforeach;?></select>
-<select name="status" class="border rounded p-1.5"><option value="">Semua status</option><?php foreach(['draft','diajukan','diverifikasi','disetujui','ditolak','direvisi','dikunci'] as $st):?><option <?=($f_status===$st?'selected':'')?>><?=$st?></option><?php endforeach;?></select>
-<input name="q" value="<?=Security::e($q)?>" placeholder="Cari..." class="border rounded p-1.5">
-<button class="bg-slate-700 text-white px-3 rounded">Filter</button>
+<select name="tahun" onchange="this.form.submit()" class="border rounded p-1.5"><?php foreach($tahun as $t):?><option value="<?=$t['id']?>" <?=($f_tahun==$t['id']?'selected':'')?>><?=$t['tahun']?> (<?=$t['status']?>)</option><?php endforeach;?></select>
+<select name="bidang" onchange="this.form.submit()" class="border rounded p-1.5"><option value="">Semua bidang</option><?php foreach($bid as $b):?><option value="<?=$b['id']?>" <?=($f_bidang==$b['id']?'selected':'')?>><?=Security::e($b['nama_bidang'])?></option><?php endforeach;?></select>
+<select name="sumber" onchange="this.form.submit()" class="border rounded p-1.5"><option value="">Semua sumber</option><?php foreach($sum as $x):?><option value="<?=$x['id']?>" <?=($f_sumber==$x['id']?'selected':'')?>><?=Security::e($x['nama_sumber_dana'])?></option><?php endforeach;?></select>
+<select name="status" onchange="this.form.submit()" class="border rounded p-1.5"><option value="">Semua status</option><?php foreach(['draft','diajukan','diverifikasi','disetujui','ditolak','direvisi','dikunci'] as $st):?><option <?=($f_status===$st?'selected':'')?>><?=$st?></option><?php endforeach;?></select>
+<input name="q" value="<?=Security::e($q)?>" placeholder="Cari..." class="border rounded p-1.5" oninput="clearTimeout(window.__qT);window.__qT=setTimeout(()=>this.form.submit(),700)">
 <?php if($canAdd):?><button type="button" id="btnAddRkam" onclick="window.rkamForm(0)" title="Tambah RKAM" class="bg-emerald-700 hover:bg-emerald-800 text-white w-10 h-10 rounded-2xl ml-auto shadow no-print"><i class="fa-solid fa-plus"></i></button><?php endif;?>
 </form></div>
 <div class="bg-white rounded shadow overflow-auto">
