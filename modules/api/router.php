@@ -447,8 +447,10 @@ $badPhp=[];
 foreach(array_slice($phpFiles,0,40) as $f){$p=$root.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$f);if(!is_file($p))continue;$chk=@shell_exec(escapeshellarg($phpBin).' -l '.escapeshellarg($p).' 2>&1');if($chk&&stripos($chk,'no syntax errors')===false)$badPhp[]=$f;}
 if($badPhp){$run('reset --hard '.escapeshellarg($before));foreach($saved as $rel=>$content){$p=$root.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$rel);@file_put_contents($p,$content);}Security::json(['ok'=>false,'msg'=>'Paket pembaruan ditolak: verifikasi kode gagal. Sistem dikembalikan.','details'=>array_slice($badPhp,0,10)]);}
 if(function_exists('opcache_reset')){@opcache_reset();}
-Logger::log($pdo,'update','sistem',null,['from'=>substr($before,0,7)],['to'=>substr($afterRemote,0,7),'files'=>count($changedFiles)]);
-Security::json(['ok'=>true,'msg'=>'OK','before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7),'files'=>count($changedFiles),'details'=>array_slice($changedFiles,0,30),'backup'=>basename($bkDir)]);
+$newVer=substr($afterRemote,0,7);
+try{$pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES('sys_version',?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$newVer]);}catch(Exception $e){error_log('sys_version: '.$e->getMessage());}
+Logger::log($pdo,'update','sistem',null,['from'=>substr($before,0,7)],['to'=>$newVer,'files'=>count($changedFiles)]);
+Security::json(['ok'=>true,'msg'=>'OK','before'=>substr($before,0,7),'after'=>$newVer,'files'=>count($changedFiles),'details'=>array_slice($changedFiles,0,30),'backup'=>basename($bkDir),'version'=>$newVer]);
 }
 default: Security::json(['ok'=>false,'msg'=>'Unknown act'],400);
 }

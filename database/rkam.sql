@@ -440,5 +440,6 @@ INSERT INTO app_settings (skey,svalue) VALUES
 ('format_nomor','{no}/RKAM/{kode}/{romawi}/{tahun}'),
 ('max_upload_mb','5'),
 ('session_timeout','7200'),
-('last_backup_at','')
+('last_backup_at',''),
+('sys_version','1.0.0')
 ON DUPLICATE KEY UPDATE svalue=VALUES(svalue);
