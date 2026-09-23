@@ -424,7 +424,7 @@ $before=trim($run('rev-parse HEAD'));
 $fetch=$run('fetch --prune origin main');
 $afterRemote=trim($run('rev-parse origin/main'));
 if(!preg_match('/^[0-9a-f]{40}$/',$afterRemote))Security::json(['ok'=>false,'msg'=>'Gagal mengambil versi terbaru. Coba lagi nanti.','details'=>[$clean($fetch)]]);
-if($afterRemote===$before)Security::json(['ok'=>true,'msg'=>'Sudah versi terbaru','before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7),'files'=>0,'details'=>[]]);
+if($afterRemote===$before){$curVer=Helper::setting($pdo,'sys_version',APP_VERSION);if(!preg_match('/^\d+\.\d+\.\d+$/',$curVer))$curVer=APP_VERSION;Security::json(['ok'=>true,'msg'=>'Sudah versi terbaru','before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7),'files'=>0,'details'=>[],'version'=>$curVer]);}
 $diffList=$run('diff --name-only '.escapeshellarg($before).' '.escapeshellarg($afterRemote));
 $files=$diffList==='' ? [] : explode("\n",$diffList);
 $files=array_values(array_filter(array_map('trim',$files)));
@@ -447,10 +447,10 @@ $badPhp=[];
 foreach(array_slice($phpFiles,0,40) as $f){$p=$root.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$f);if(!is_file($p))continue;$chk=@shell_exec(escapeshellarg($phpBin).' -l '.escapeshellarg($p).' 2>&1');if($chk&&stripos($chk,'no syntax errors')===false)$badPhp[]=$f;}
 if($badPhp){$run('reset --hard '.escapeshellarg($before));foreach($saved as $rel=>$content){$p=$root.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$rel);@file_put_contents($p,$content);}Security::json(['ok'=>false,'msg'=>'Paket pembaruan ditolak: verifikasi kode gagal. Sistem dikembalikan.','details'=>array_slice($badPhp,0,10)]);}
 if(function_exists('opcache_reset')){@opcache_reset();}
-$newVer=substr($afterRemote,0,7);
+$cur=Helper::setting($pdo,'sys_version',APP_VERSION);if(!preg_match('/^\d+\.\d+\.\d+$/',$cur))$cur=APP_VERSION;$p=array_map('intval',explode('.',$cur));$p[2]++;$newVer=$p[0].'.'.$p[1].'.'.$p[2];
 try{$pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES('sys_version',?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$newVer]);}catch(Exception $e){error_log('sys_version: '.$e->getMessage());}
-Logger::log($pdo,'update','sistem',null,['from'=>substr($before,0,7)],['to'=>$newVer,'files'=>count($changedFiles)]);
-Security::json(['ok'=>true,'msg'=>'OK','before'=>substr($before,0,7),'after'=>$newVer,'files'=>count($changedFiles),'details'=>array_slice($changedFiles,0,30),'backup'=>basename($bkDir),'version'=>$newVer]);
+Logger::log($pdo,'update','sistem',null,['from'=>$cur],['to'=>$newVer,'files'=>count($changedFiles),'commit'=>substr($afterRemote,0,7)]);
+Security::json(['ok'=>true,'msg'=>'OK','before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7),'files'=>count($changedFiles),'details'=>array_slice($changedFiles,0,30),'backup'=>basename($bkDir),'version'=>$newVer]);
 }
 default: Security::json(['ok'=>false,'msg'=>'Unknown act'],400);
 }
