@@ -37,11 +37,11 @@ $role=Auth::role();
 <?php endif;?></div></div>
 <div class="grid lg:grid-cols-2 gap-3">
 <div class="bg-white rounded shadow p-4"><b>Item Anggaran</b>
-<table class="w-full text-sm mt-2"><thead><tr class="bg-gray-50 border-b text-left"><th class="p-1">Uraian</th><th class="p-1 text-right">Volume</th><th class="p-1 text-right">Harga</th><th class="p-1 text-right">Jumlah</th></tr></thead><tbody>
-<?php foreach($items as $it):?><tr class="border-b"><td class="p-1"><?=Security::e($it['uraian'])?><div class="text-xs text-gray-500"><?=Security::e($it['kode_rekening']??'')?></div></td><td class="p-1 text-right"><?=number_format((float)$it['volume'],0,',','.')?> <?=Security::e($it['satuan_text']??'')?></td><td class="p-1 text-right"><?=Security::rupiah($it['harga_satuan'])?></td><td class="p-1 text-right"><?=Security::rupiah($it['jumlah'])?></td></tr><?php endforeach;?>
+<table class="w-full text-sm mt-2"><thead><tr class="bg-gray-50 border-b text-left"><th class="p-1 w-10">No</th><th class="p-1">Uraian</th><th class="p-1 text-right">Volume</th><th class="p-1 text-right">Harga</th><th class="p-1 text-right">Jumlah</th></tr></thead><tbody>
+<?php $no=1;foreach($items as $it):?><tr class="border-b"><td class="p-1"><?=$no++?></td><td class="p-1"><?=Security::e($it['uraian'])?><div class="text-xs text-gray-500"><?=Security::e($it['kode_rekening']??'')?></div></td><td class="p-1 text-right"><?=number_format((float)$it['volume'],0,',','.')?> <?=Security::e($it['satuan_text']??'')?></td><td class="p-1 text-right"><?=Security::rupiah($it['harga_satuan'])?></td><td class="p-1 text-right"><?=Security::rupiah($it['jumlah'])?></td></tr><?php endforeach;?>
 </tbody></table></div>
 <div><div class="bg-white rounded shadow p-4 mb-3"><b>Sumber Dana</b>
-<table class="w-full text-sm mt-2"><?php foreach($sm as $x):?><tr class="border-b"><td class="p-1"><?=Security::e($x['nama_sumber_dana'])?></td><td class="p-1 text-right"><?=Security::rupiah($x['jumlah'])?></td></tr><?php endforeach;?></table></div>
+<table class="w-full text-sm mt-2"><thead><tr class="bg-gray-50 border-b text-left"><th class="p-1 w-10">No</th><th class="p-1">Sumber</th><th class="p-1 text-right">Jumlah</th></tr></thead><tbody><?php $no2=1;foreach($sm as $x):?><tr class="border-b"><td class="p-1"><?=$no2++?></td><td class="p-1"><?=Security::e($x['nama_sumber_dana'])?></td><td class="p-1 text-right"><?=Security::rupiah($x['jumlah'])?></td></tr><?php endforeach;?></table></div>
 <div class="bg-white rounded-2xl shadow border border-emerald-100 p-4"><div class="flex items-center justify-between"><b>Riwayat Status</b><span class="text-[10px] text-gray-400"><?=count($hist)?> Perubahan</span></div>
 <?php $rev=null; foreach($hist as $hh){ if(in_array($hh['status_to']??'', ['ditolak','direvisi']) && trim($hh['catatan']??'')!==''){ $rev=$hh; break; } } ?>
 <?php if(in_array($r['status'], ['ditolak','direvisi']) && $rev): ?>

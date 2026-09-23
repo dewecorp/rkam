@@ -7,8 +7,8 @@ $can=in_array(Auth::role(),['superadmin','bendahara']);
 <?php if($can):?><button id="btnAddReal" onclick="window.realForm(0)" title="Tambah Realisasi" class="bg-emerald-700 hover:bg-emerald-800 text-white w-10 h-10 rounded-2xl text-sm mb-3 no-print shadow"><i class="fa-solid fa-plus"></i></button><?php endif;?>
 <div class="bg-white rounded shadow overflow-auto">
 <?php if(!$s):?><div class="p-10 text-center text-gray-500">Belum ada transaksi realisasi.</div>
-<?php else:?><table class="w-full text-sm min-w-[900px]"><thead><tr class="bg-gray-50 border-b text-left"><th class="p-2">Tanggal / Bukti</th><th class="p-2">Kegiatan</th><th class="p-2">Uraian</th><th class="p-2 text-right">Jumlah</th><th class="p-2">Bukti</th><th class="p-2 no-print">Aksi</th></tr></thead><tbody>
-<?php foreach($s as $r):?><tr class="border-b"><td class="p-2"><?=Security::e($r['tanggal_transaksi'])?><div class="text-xs text-gray-500"><?=Security::e($r['nomor_bukti']??'')?></div></td>
+<?php else:?><table class="w-full text-sm min-w-[900px]"><thead><tr class="bg-gray-50 border-b text-left"><th class="p-2 w-10">No</th><th class="p-2">Tanggal / Bukti</th><th class="p-2">Kegiatan</th><th class="p-2">Uraian</th><th class="p-2 text-right">Jumlah</th><th class="p-2">Bukti</th><th class="p-2 no-print">Aksi</th></tr></thead><tbody>
+<?php $no=1;foreach($s as $r):?><tr class="border-b"><td class="p-2"><?=$no++?></td><td class="p-2"><?=Security::e($r['tanggal_transaksi'])?><div class="text-xs text-gray-500"><?=Security::e($r['nomor_bukti']??'')?></div></td>
 <td class="p-2"><?=Security::e($r['nama_kegiatan'])?></td><td class="p-2"><?=Security::e($r['uraian'])?><div class="text-xs text-gray-500"><?=Security::e($r['penerima_vendor']??'')?></div></td>
 <td class="p-2 text-right"><?=Security::rupiah($r['jumlah'])?><?=($r['allow_overbudget']?'<div class="text-[10px] text-red-600">overbudget</div>':'')?></td>
 <td class="p-2"><?php if($r['bukti_file']):?><a target="_blank" href="<?=BASE_URL?>uploads/bukti/<?=Security::e($r['bukti_file'])?>" title="Lihat Bukti" class="btn-ic btn-dl"><i class="fa-solid fa-file-lines"></i></a><?php else:?>-<?php endif;?></td>

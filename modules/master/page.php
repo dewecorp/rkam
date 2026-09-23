@@ -17,8 +17,9 @@ function cellVal($tab,$c,$r,$bidMap,$jbMap,$gruMap=[]){$v=$r[$c]??'';if($c==='bi
 <button onclick="masterForm(0)" title="Tambah <?=$tabs[$tab]?>" class="ml-auto bg-emerald-700 hover:bg-emerald-800 text-white w-10 h-10 rounded-2xl text-sm shadow"><i class="fa-solid fa-plus"></i></button></div>
 <div class="bg-white rounded shadow overflow-auto">
 <?php if(!$rows):?><div class="p-10 text-center text-gray-500">Belum ada data.<br><button onclick="masterForm(0)" title="Tambah <?=$tabs[$tab]?>" class="mt-2 bg-emerald-700 hover:bg-emerald-800 text-white w-11 h-11 rounded-2xl shadow"><i class="fa-solid fa-plus"></i></button></div>
-<?php else:?><table class="w-full text-sm"><thead><tr class="bg-gray-50 border-b"><?php foreach($cols[$tab] as $c=>$lbl):?><th class="p-2 text-left"><?=Security::e($lbl)?></th><?php endforeach;?><th class="p-2 no-print">Aksi</th></tr></thead>
-<tbody><?php foreach($rows as $r):?><tr class="border-b hover:bg-gray-50">
+<?php else:?><table class="w-full text-sm"><thead><tr class="bg-gray-50 border-b"><th class="p-2 w-10 text-left">No</th><?php foreach($cols[$tab] as $c=>$lbl):?><th class="p-2 text-left"><?=Security::e($lbl)?></th><?php endforeach;?><th class="p-2 no-print">Aksi</th></tr></thead>
+<tbody><?php $no=1;foreach($rows as $r):?><tr class="border-b hover:bg-gray-50">
+<td class="p-2"><?=$no++?></td>
 <?php foreach($cols[$tab] as $c=>$lbl):?><td class="p-2"><?=Security::e(cellVal($tab,$c,$r,$bidMap,$jbMap,$gruMap))?></td><?php endforeach;?>
 <td class="p-2 whitespace-nowrap no-print"><button onclick='masterForm(<?=$r['id']?>,<?=json_encode($r,JSON_HEX_APOS|JSON_HEX_QUOT)?>)' title="Edit" class="btn-ic btn-edit"><i class="fa-solid fa-pen-to-square"></i></button> <button onclick="masterDel(<?=$r['id']?>)" title="Hapus" class="btn-ic btn-del"><i class="fa-solid fa-trash-can"></i></button></td></tr><?php endforeach;?></tbody></table><?php endif;?></div>
 <script>
