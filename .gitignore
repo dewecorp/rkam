@@ -5,6 +5,7 @@ rkam-backup.zip
 
 # Backup SQL lokal (cukup via zip, jangan ke GitHub)
 db_backups/
+sys_backups/
 
 # File upload user (jaga struktur + proteksi)
 uploads/bukti/*

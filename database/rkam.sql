@@ -46,8 +46,10 @@ CREATE TABLE IF NOT EXISTS madrasah (
   telepon VARCHAR(30) NULL,
   nama_kepala VARCHAR(100) NULL,
   nip_kepala VARCHAR(50) NULL,
+  kepala_guru_id INT UNSIGNED NULL,
   nama_bendahara VARCHAR(100) NULL,
   nip_bendahara VARCHAR(50) NULL,
+  bendahara_guru_id INT UNSIGNED NULL,
   logo VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

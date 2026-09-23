@@ -85,6 +85,7 @@ try{
 if($id>0){$set=implode(',',array_map(fn($c)=>"$c=?",array_keys($d)));$s=$pdo->prepare("UPDATE $t SET $set WHERE id=?");$s->execute([...array_values($d),$id]);Logger::log($pdo,'edit',$t,$id,null,$d);}
 else{$s=$pdo->prepare("INSERT INTO $t(".implode(',',array_keys($d)).") VALUES(".rtrim(str_repeat('?,',count($d)),',').")");$s->execute(array_values($d));$id=(int)$pdo->lastInsertId();Logger::log($pdo,'tambah',$t,$id,null,$d);}
 if($t==='kegiatan'){$n=Helper::syncKegiatanToRkam($pdo,$id);Security::json(['ok'=>true,'msg'=>$n>0?"Tersimpan + sinkron $n RKAM draft":"Tersimpan"]);}
+if($t==='guru'){try{$g=$pdo->prepare("SELECT nama,nuptk FROM guru WHERE id=?");$g->execute([$id]);if($gr=$g->fetch()){$pdo->prepare("UPDATE madrasah SET nama_kepala=?,nip_kepala=? WHERE kepala_guru_id=?")->execute([$gr['nama'],$gr['nuptk']??'',$id]);$pdo->prepare("UPDATE madrasah SET nama_bendahara=?,nip_bendahara=? WHERE bendahara_guru_id=?")->execute([$gr['nama'],$gr['nuptk']??'',$id]);}}catch(Exception $e){error_log('sync pimpinan: '.$e->getMessage());}}
 }catch(Exception $ex){error_log('master_save: '.$ex->getMessage());$msg='Gagal simpan';if(stripos($ex->getMessage(),'Duplicate')!==false)$msg='Kode sudah dipakai';Security::json(['ok'=>false,'msg'=>$msg]);}
 Security::json(['ok'=>true,'msg'=>'Tersimpan']);
 }
@@ -280,9 +281,15 @@ case 'user_reset': {if(Auth::role()!=='superadmin')Security::json(['ok'=>false,'
 case 'user_delete': {if(Auth::role()!=='superadmin')Security::json(['ok'=>false,'msg'=>'No permission'],403);$id=(int)($_POST['id']??0);if($id===Auth::id())Security::json(['ok'=>false,'msg'=>'Tidak bisa hapus diri']);$pdo->prepare("DELETE FROM users WHERE id=?")->execute([$id]);Logger::log($pdo,'hapus','users',$id);Security::json(['ok'=>true]);}
 case 'setting_save': {
 if(!in_array(Auth::role(),['superadmin','kepala_madrasah','bendahara']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
-$m=['nama_madrasah','nsm','npsn','alamat','desa','kecamatan','kabupaten','provinsi','kode_pos','email','telepon','nama_kepala','nip_kepala','nama_bendahara','nip_bendahara'];
+$m=['nama_madrasah','nsm','npsn','alamat','desa','kecamatan','kabupaten','provinsi','kode_pos','email','telepon'];
 $d=[];foreach($m as $k)$d[$k]=trim($_POST[$k]??'');
-$pdo->prepare("UPDATE madrasah SET nama_madrasah=?,nsm=?,npsn=?,alamat=?,desa=?,kecamatan=?,kabupaten=?,provinsi=?,kode_pos=?,email=?,telepon=?,nama_kepala=?,nip_kepala=?,nama_bendahara=?,nip_bendahara=? WHERE id=1")->execute(array_values($d));
+$kid=trim($_POST['kepala_guru_id']??'');$bid2=trim($_POST['bendahara_guru_id']??'');
+$kid=$kid===''||$kid==='-'?null:(int)$kid;$bid2=$bid2===''||$bid2==='-'?null:(int)$bid2;
+$knama='';$knip='';$bnama='';$bnip='';
+if($kid){$s=$pdo->prepare("SELECT nama,nuptk FROM guru WHERE id=? AND status='aktif'");$s->execute([$kid]);$g=$s->fetch();if(!$g)Security::json(['ok'=>false,'msg'=>'Kepala Madrasah tidak valid']);$knama=$g['nama'];$knip=$g['nuptk']??'';}
+if($bid2){$s=$pdo->prepare("SELECT nama,nuptk FROM guru WHERE id=? AND status='aktif'");$s->execute([$bid2]);$g=$s->fetch();if(!$g)Security::json(['ok'=>false,'msg'=>'Bendahara tidak valid']);$bnama=$g['nama'];$bnip=$g['nuptk']??'';}
+$d['nama_kepala']=$knama;$d['nip_kepala']=$knip;$d['kepala_guru_id']=$kid;$d['nama_bendahara']=$bnama;$d['nip_bendahara']=$bnip;$d['bendahara_guru_id']=$bid2;
+$pdo->prepare("UPDATE madrasah SET nama_madrasah=?,nsm=?,npsn=?,alamat=?,desa=?,kecamatan=?,kabupaten=?,provinsi=?,kode_pos=?,email=?,telepon=?,nama_kepala=?,nip_kepala=?,kepala_guru_id=?,nama_bendahara=?,nip_bendahara=?,bendahara_guru_id=? WHERE id=1")->execute(array_values($d));
 foreach(['app_name','kode_madrasah','max_upload_mb'] as $k){if(isset($_POST[$k]))$pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES(?,?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$k,trim($_POST[$k])]);}
 $logoFn=null;
 if(!empty($_FILES['logo']['tmp_name'])&&is_uploaded_file($_FILES['logo']['tmp_name'])){
@@ -394,6 +401,54 @@ $id=(int)($_POST['rkam_id']??0);
 if(!$id)Security::json(['ok'=>false,'msg'=>'Kegiatan wajib dipilih'],400);
 $i=$pdo->prepare("SELECT rs.sumber_dana_id AS id,s.nama_sumber_dana,rs.jumlah FROM rkam_sumber_dana rs JOIN sumber_dana s ON s.id=rs.sumber_dana_id WHERE rs.rkam_id=? ORDER BY s.nama_sumber_dana");$i->execute([$id]);
 Security::json(['ok'=>true,'data'=>$i->fetchAll()]);
+}
+case 'sys_update': {
+if(Auth::role()!=='superadmin')Security::json(['ok'=>false,'msg'=>'No permission'],403);
+@set_time_limit(120);
+$clean=function($s){$s=(string)($s??'');$s=str_ireplace(['github.com','github','dewecorp/rkam','dewecorp'],'server pusat',$s);return trim(mb_substr($s,0,800));};
+$root=realpath(__DIR__.'/../..');if(!$root||!is_dir($root.'/.git'))Security::json(['ok'=>false,'msg'=>'Folder sistem bukan salinan versi resmi']);
+$git='git -C '.escapeshellarg($root).' ';
+$run=function($args) use ($git){$out=@shell_exec($git.$args.' 2>&1');return trim((string)($out??''));};
+$remote=$run('remote get-url origin');
+$okRemote=in_array(strtolower(trim($remote)),['https://github.com/dewecorp/rkam.git','https://github.com/dewecorp/rkam','git@github.com:dewecorp/rkam.git'],true);
+if(!$okRemote)Security::json(['ok'=>false,'msg'=>'Sumber pembaruan tidak valid. URL remote diubah, pembaruan dibatalkan demi keamanan.']);
+$branch=trim($run('rev-parse --abbrev-ref HEAD'));
+if($branch!=='main')Security::json(['ok'=>false,'msg'=>'Cabang aktif bukan versi resmi (main). Pembaruan dibatalkan.']);
+$protected=['config/database.php','uploads/bukti/.htaccess','uploads/logo/.htaccess'];
+$saved=[];foreach($protected as $rel){$p=$root.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$rel);if(is_file($p))$saved[$rel]=file_get_contents($p);}
+$porcelain=$run('status --porcelain');
+$dirtyOther=[];if($porcelain!==''){foreach(explode("\n",$porcelain) as $ln){$ln=rtrim($ln);if($ln==='')continue;$path=trim(substr($ln,3));$path=str_replace('\\','/',$path);if(!in_array($path,$protected,true)&&strpos($path,'sys_backups/')!==0)$dirtyOther[]=$path;}}
+if(count($dirtyOther)>8)Security::json(['ok'=>false,'msg'=>'Ada '.count($dirtyOther).' berkas lokal yang belum disimpan. Simpan dulu sebelum perbarui.','details'=>array_slice($dirtyOther,0,10)]);
+if($dirtyOther)Security::json(['ok'=>false,'msg'=>'Ada perubahan lokal ('.implode(', ',array_slice($dirtyOther,0,5)).'). Simpan dulu sebelum perbarui.','details'=>array_slice($dirtyOther,0,10)]);
+$before=trim($run('rev-parse HEAD'));
+$fetch=$run('fetch --prune origin main');
+$afterRemote=trim($run('rev-parse origin/main'));
+if(!preg_match('/^[0-9a-f]{40}$/',$afterRemote))Security::json(['ok'=>false,'msg'=>'Gagal mengambil versi terbaru. Coba lagi nanti.','details'=>[$clean($fetch)]]);
+if($afterRemote===$before)Security::json(['ok'=>true,'msg'=>'Sudah versi terbaru','before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7),'files'=>0,'details'=>[]]);
+$diffList=$run('diff --name-only '.escapeshellarg($before).' '.escapeshellarg($afterRemote));
+$files=$diffList==='' ? [] : explode("\n",$diffList);
+$files=array_values(array_filter(array_map('trim',$files)));
+$badExt=['.exe','.bat','.cmd','.ps1','.sh','.dll','.so','.dylib','.bin','.msi'];
+foreach($files as $f){$fl=strtolower($f);foreach($badExt as $e){if(substr($fl,-strlen($e))===$e)Security::json(['ok'=>false,'msg'=>'Paket pembaruan ditolak: berisi berkas terlarang ('.$e.').']);}if(strpos($fl,'..')!==false||$fl[0]==='/')Security::json(['ok'=>false,'msg'=>'Paket pembaruan ditolak: jalur berkas tidak valid.']);}
+foreach($protected as $rel){$run('checkout -- '.escapeshellarg($rel));}
+$bkDir=$root.DIRECTORY_SEPARATOR.'sys_backups'.DIRECTORY_SEPARATOR.date('Ymd_His');
+@mkdir($bkDir,0755,true);
+@file_put_contents($bkDir.DIRECTORY_SEPARATOR.'version.txt',"before: $before\nafter: $afterRemote\ndate: ".date('Y-m-d H:i:s')."\n");
+foreach($saved as $rel=>$content){$bp=$bkDir.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$rel);@mkdir(dirname($bp),0755,true);@file_put_contents($bp,$content);}
+$merge=$run('merge --ff-only origin/main');
+$headNow=trim($run('rev-parse HEAD'));
+if($headNow!==$afterRemote)Security::json(['ok'=>false,'msg'=>'Pembaruan dibatalkan: riwayat versi bercabang. Hubungi pengembang.','details'=>[$clean($merge)]]);
+foreach($saved as $rel=>$content){$p=$root.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$rel);@mkdir(dirname($p),0755,true);@file_put_contents($p,$content);}
+$changed=$run('diff --name-only '.escapeshellarg($before).' '.escapeshellarg($afterRemote));
+$changedFiles=$changed==='' ? [] : array_values(array_filter(array_map('trim',explode("\n",$changed))));
+$phpFiles=array_values(array_filter($changedFiles,fn($f)=>substr(strtolower($f),-4)==='.php'));
+$phpBin=(PHP_BINARY&&is_file(PHP_BINARY))?PHP_BINARY:'php';
+$badPhp=[];
+foreach(array_slice($phpFiles,0,40) as $f){$p=$root.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$f);if(!is_file($p))continue;$chk=@shell_exec(escapeshellarg($phpBin).' -l '.escapeshellarg($p).' 2>&1');if($chk&&stripos($chk,'no syntax errors')===false)$badPhp[]=$f;}
+if($badPhp){$run('reset --hard '.escapeshellarg($before));foreach($saved as $rel=>$content){$p=$root.DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$rel);@file_put_contents($p,$content);}Security::json(['ok'=>false,'msg'=>'Paket pembaruan ditolak: verifikasi kode gagal. Sistem dikembalikan.','details'=>array_slice($badPhp,0,10)]);}
+if(function_exists('opcache_reset')){@opcache_reset();}
+Logger::log($pdo,'update','sistem',null,['from'=>substr($before,0,7)],['to'=>substr($afterRemote,0,7),'files'=>count($changedFiles)]);
+Security::json(['ok'=>true,'msg'=>'OK','before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7),'files'=>count($changedFiles),'details'=>array_slice($changedFiles,0,30),'backup'=>basename($bkDir)]);
 }
 default: Security::json(['ok'=>false,'msg'=>'Unknown act'],400);
 }
