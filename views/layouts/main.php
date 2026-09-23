@@ -25,16 +25,16 @@ table thead tr{background:#ecfdf5 !important}table thead th{color:#065f46 !impor
 label{text-transform:capitalize !important}
 input::placeholder,textarea::placeholder{text-transform:capitalize !important}
 .bg-white{border:1px solid #d1fae5}
-.navlink{position:relative;display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;border-radius:1rem;color:#cbd5e1;font-weight:500;transition:.15s}
-.navlink:hover{background:rgba(16,185,129,.15);color:#fff}
-.navlink.active{background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 4px 14px rgba(16,185,129,.4)}
-.navlink.active::before{content:'';position:absolute;left:-1rem;top:20%;bottom:20%;width:4px;border-radius:99px;background:#34d399;box-shadow:0 0 8px #34d399}
-.navlink.active::after{content:'●';margin-left:auto;font-size:8px;color:#a7f3d0}
+.navlink{position:relative;display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;border-radius:1rem;color:#d1fae5;font-weight:500;transition:.15s}
+.navlink:hover{background:rgba(255,255,255,.15);color:#fff}
+.navlink.active{background:#fff;color:#065f46;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.navlink.active::before{content:'';position:absolute;left:-1rem;top:20%;bottom:20%;width:4px;border-radius:99px;background:#fff;box-shadow:0 0 8px rgba(255,255,255,.8)}
+.navlink.active::after{content:'●';margin-left:auto;font-size:8px;color:#059669}
 .navlink.parent.active::after{display:none}
 #mchev,#lchev{margin-left:auto;flex-shrink:0}
 .navlink.sub{padding:.45rem .8rem .45rem 2.2rem;font-size:12.5px;border-radius:.8rem}
-.navlink.sub::before{content:'';position:absolute;left:1.2rem;top:50%;width:6px;height:6px;transform:translateY(-50%);border-radius:99px;background:#34d39955}
-.navlink.sub.active::before{left:-1rem;top:20%;bottom:20%;width:4px;height:auto;transform:none;background:#34d399}
+.navlink.sub::before{content:'';position:absolute;left:1.2rem;top:50%;width:6px;height:6px;transform:translateY(-50%);border-radius:99px;background:rgba(255,255,255,.5)}
+.navlink.sub.active::before{left:-1rem;top:20%;bottom:20%;width:4px;height:auto;transform:none;background:#fff}
 /* rounded modern global */
 .rounded{border-radius:.9rem !important}
 .rounded-lg{border-radius:1.1rem !important}
@@ -50,21 +50,21 @@ select::-ms-expand{display:none !important}
 /* custom dropdown rounded - ganti semua select */
 .dd{position:relative;min-width:8rem;max-width:100%;border:0 !important;background:transparent !important;box-shadow:none !important;padding:0 !important}
 .dd>select{display:none !important}
-.dd-btn{width:100%;max-width:100%;display:flex;align-items:center;justify-content:space-between;gap:.5rem;border:1.5px solid #6ee7b7 !important;border-radius:.75rem !important;background:#fff !important;color:#064e3b !important;padding:.5rem .75rem;font-size:inherit;cursor:pointer;text-align:left;line-height:1.5;overflow:hidden;min-height:2.5rem;box-sizing:border-box}
+.dd-btn{width:100%;max-width:100%;display:flex;align-items:center;justify-content:space-between;gap:.5rem;border:1.5px solid #6ee7b7 !important;border-radius:1.25rem !important;background:#fff !important;color:#064e3b !important;padding:.5rem 1rem;font-size:inherit;cursor:pointer;text-align:left;line-height:1.5;overflow:hidden;min-height:2.5rem;box-sizing:border-box}
 .dd-btn>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .dd-btn>i{flex-shrink:0}
-.dd-list{position:absolute;left:0;right:0;width:100%;max-width:100%;top:calc(100% + 4px);z-index:80;background:#fff;border:1.5px solid #6ee7b7;border-radius:1rem;box-shadow:0 16px 40px -12px rgba(6,95,70,.35);max-height:12rem;overflow-x:hidden;overflow-y:auto;padding:.3rem;box-sizing:border-box;scrollbar-width:none;-ms-overflow-style:none}
+.dd-list{position:absolute;left:0;right:0;width:100%;max-width:100%;top:calc(100% + 4px);z-index:80;background:#fff;border:1.5px solid #6ee7b7;border-radius:1.25rem !important;box-shadow:0 16px 40px -12px rgba(6,95,70,.35);max-height:12rem;overflow-x:hidden;overflow-y:auto;padding:.35rem;box-sizing:border-box;scrollbar-width:none;-ms-overflow-style:none}
 .dd-list::-webkit-scrollbar{width:0;height:0}
-.dd-item{padding:.5rem .7rem;border-radius:.7rem;cursor:pointer;font-size:.8rem;color:#064e3b;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
-.dd-item:first-child{border-top-left-radius:.8rem;border-top-right-radius:.8rem}
-.dd-item:last-child{border-bottom-left-radius:.8rem;border-bottom-right-radius:.8rem}
+.dd-item{padding:.5rem .75rem;border-radius:.85rem;cursor:pointer;font-size:.8rem;color:#064e3b;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+.dd-item:first-child{border-top-left-radius:.95rem;border-top-right-radius:.95rem}
+.dd-item:last-child{border-bottom-left-radius:.95rem;border-bottom-right-radius:.95rem}
 .dd-item:hover{background:#ecfdf5}
 .dd-item.sel{background:#d1fae5;font-weight:700}
 .srow .dd-btn,.irow .dd-btn{min-height:0 !important;padding:.375rem .75rem !important;line-height:1.5 !important}
 .srow .sumPagu{min-height:1rem}
 /* samakan radius semua kontrol form */
-input.rounded,input.rounded-lg,input.rounded-xl,input.rounded-2xl,select.rounded,select.rounded-lg,select.rounded-xl,select.rounded-2xl,textarea.rounded,textarea.rounded-lg,textarea.rounded-xl,textarea.rounded-2xl,.dd.rounded,.dd.rounded-lg,.dd.rounded-xl,.dd.rounded-2xl{border-radius:.75rem !important}
-.dd-list{border-radius:.75rem !important}
+input.rounded,input.rounded-lg,input.rounded-xl,input.rounded-2xl,select.rounded,select.rounded-lg,select.rounded-xl,select.rounded-2xl,textarea.rounded,textarea.rounded-lg,textarea.rounded-xl,textarea.rounded-2xl,.dd.rounded,.dd.rounded-lg,.dd.rounded-xl,.dd.rounded-2xl{border-radius:1.25rem !important}
+.dd-list{border-radius:1.25rem !important}
 .dd-item{border-radius:.5rem !important}
 .dd-item:first-child{border-top-left-radius:.65rem !important;border-top-right-radius:.65rem !important}
 .dd-item:last-child{border-bottom-left-radius:.65rem !important;border-bottom-right-radius:.65rem !important}
@@ -104,11 +104,11 @@ function ddify(scope){(scope||document).querySelectorAll('select').forEach(sel=>
 <body class="bg-gradient-to-br from-emerald-50 via-slate-100 to-emerald-100 min-h-screen text-slate-800">
 <?php $u=Auth::user(); $role=Auth::role(); if($role==='superadmin'){$notif=$pdo->query("SELECT COUNT(*) c FROM notifications WHERE is_read=0")->fetchColumn();}else{$nq=$pdo->prepare("SELECT COUNT(*) c FROM notifications WHERE is_read=0 AND (role_target=? OR role_target IS NULL OR role_target='' OR user_id=?)");$nq->execute([$role,Auth::id()]);$notif=$nq->fetchColumn();} $initial=strtoupper(substr($u['nama']??'U',0,1)); $mlogo=$pdo->query("SELECT logo,nama_madrasah FROM madrasah WHERE id=1")->fetch(); $appName=Helper::setting($pdo,'app_name','SIRKAM'); $thAktif=Helper::tahunAktif($pdo); $thList=$pdo->query("SELECT id,tahun,status FROM tahun_anggaran ORDER BY tahun DESC")->fetchAll(); ?>
 <div class="flex min-h-screen">
-<aside id="sidebar" class="bg-gradient-to-b from-slate-900 via-emerald-950 to-slate-900 text-white hidden md:flex flex-col no-print fixed md:sticky top-0 inset-y-0 left-0 z-40 w-72 h-screen shrink-0 shadow-2xl overflow-hidden">
-<div class="h-16 px-5 flex items-center gap-3 border-b border-white/10 shrink-0 bg-gradient-to-r from-slate-900 via-emerald-950 to-emerald-950">
+<aside id="sidebar" class="bg-gradient-to-b from-emerald-700 via-emerald-600 to-emerald-800 text-white hidden md:flex flex-col no-print fixed md:sticky top-0 inset-y-0 left-0 z-40 w-72 h-screen shrink-0 overflow-hidden">
+<div class="h-16 px-5 flex items-center gap-3 shrink-0 bg-emerald-700 border-b border-white/10">
 <?php $logoFile=!empty($mlogo['logo'])?__DIR__.'/../../uploads/logo/'.$mlogo['logo']:''; $logoOk=$logoFile&&is_file($logoFile); $logoV=$logoOk?filemtime($logoFile):0; ?>
 <?php if($logoOk):?><img src="<?=BASE_URL?>uploads/logo/<?=Security::e($mlogo['logo'])?>?v=<?=$logoV?>" class="w-11 h-11 rounded-2xl object-contain bg-white p-1 shadow-lg"><?php else:?><div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-xl shadow-lg"><i class="fa-solid fa-mosque"></i></div><?php endif;?>
-<div class="min-w-0"><div class="font-extrabold text-[15px] leading-tight truncate"><?=Security::e($appName)?></div><div class="text-xs text-emerald-300 truncate"><?=Security::e($mlogo['nama_madrasah']??'')?></div></div></div>
+<div class="min-w-0"><div class="font-extrabold text-[15px] leading-tight truncate"><?=Security::e($appName)?></div><div class="text-xs text-emerald-100 truncate"><?=Security::e($mlogo['nama_madrasah']??'')?></div></div></div>
 <?php $cur=$page??'dashboard'; if($cur==='print'||$cur==='export')$cur='laporan'; ?>
 <nav class="flex-1 p-4 space-y-1.5 text-sm overflow-y-auto" id="nav">
 <a href="<?=BASE_URL?>" data-p="dashboard" class="navlink <?=($cur==='dashboard'?'active':'')?>"><i class="fa-solid fa-gauge w-5 text-center"></i> Dashboard</a>
@@ -133,12 +133,12 @@ function ddify(scope){(scope||document).querySelectorAll('select').forEach(sel=>
 <?php if(in_array($role,['superadmin','kepala_madrasah','bendahara'])):?><a href="<?=BASE_URL?>pengaturan" data-p="pengaturan" class="navlink <?=($cur==='pengaturan'?'active':'')?>"><i class="fa-solid fa-gear w-5 text-center"></i> Pengaturan</a><?php endif;?>
 <?php if($role==='superadmin'):?><a href="<?=BASE_URL?>backup" data-p="backup" class="navlink <?=($cur==='backup'?'active':'')?>"><i class="fa-solid fa-floppy-disk w-5 text-center"></i> Backup</a><?php endif;?>
 </nav>
-<div class="p-4 border-t border-white/10 flex items-center gap-3 shrink-0 bg-slate-900/60">
-<div class="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center font-bold"><?=$initial?></div>
-<div class="text-xs"><div class="font-semibold text-white"><?=Security::e($u['nama']??'')?></div><div class="text-emerald-300"><?=Security::e($role)?> • v<?=APP_VERSION?></div></div></div></aside>
+<div class="p-4 border-t border-white/20 flex items-center gap-3 shrink-0 bg-emerald-800/60">
+<div class="w-9 h-9 rounded-full bg-white text-emerald-700 flex items-center justify-center font-bold"><?=$initial?></div>
+<div class="text-xs"><div class="font-semibold text-white"><?=Security::e($u['nama']??'')?></div><div class="text-emerald-100"><?=Security::e($role)?> • v<?=APP_VERSION?></div></div></div></aside>
 <div id="sbOverlay" class="fixed inset-0 bg-black/50 hidden z-30 md:hidden" onclick="toggleSb(false)"></div>
 <div class="flex-1 flex flex-col min-w-0 md:ml-0">
-<header class="sticky top-0 z-20 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white px-4 h-16 flex items-center gap-3 no-print shadow-lg shrink-0">
+<header class="sticky top-0 z-20 bg-emerald-700 text-white px-4 h-16 flex items-center gap-3 no-print shrink-0 border-b border-white/10">
 <button class="md:hidden w-9 h-9 rounded-xl bg-white/10 border border-white/20 text-white" onclick="toggleSb(true)"><i class="fa-solid fa-bars"></i></button>
 <?php $hari=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu']; $bulan=[1=>'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']; ?>
 <div class="hidden sm:flex items-center gap-2 text-white/90 text-sm"><i class="fa-solid fa-calendar-day text-emerald-300"></i><span><?=$hari[date('N')-1]?>, <?=date('j')?> <?=$bulan[(int)date('n')]?> <?=date('Y')?></span></div>
