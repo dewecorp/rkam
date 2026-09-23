@@ -24,5 +24,6 @@ case 'rekening': for($i=1;$i<=99;$i++){$k='5.1.'.sprintf('%02d',$i);$s=$pdo->pre
 case 'sumber_dana': $base=self::initial($nama);$k=$base;for($i=1;$i<=50;$i++){$s=$pdo->prepare("SELECT COUNT(*) FROM sumber_dana WHERE kode=?");$s->execute([$k]);if(!$s->fetchColumn())return $k;$k=$base.$i;} return $base.self::alnum(2);
 case 'satuan': $base=self::singkatan($nama);$k=$base;for($i=1;$i<=50;$i++){$s=$pdo->prepare("SELECT COUNT(*) FROM satuan WHERE kode=?");$s->execute([$k]);if(!$s->fetchColumn())return $k;$k=$base.$i;} return $k;
 case 'guru': for($i=1;$i<=999;$i++){$k='GRU-'.sprintf('%03d',$i);$s=$pdo->prepare("SELECT COUNT(*) FROM guru WHERE kode=?");$s->execute([$k]);if(!$s->fetchColumn())return $k;} return self::kodeUnik($pdo,'guru','kode',fn()=>'GRU-'.self::alnum(3));
+case 'jabatan': for($i=1;$i<=999;$i++){$k='JBT-'.sprintf('%03d',$i);$s=$pdo->prepare("SELECT COUNT(*) FROM jabatan WHERE kode=?");$s->execute([$k]);if(!$s->fetchColumn())return $k;} return self::kodeUnik($pdo,'jabatan','kode',fn()=>'JBT-'.self::alnum(3));
 default: return null;}}
 }

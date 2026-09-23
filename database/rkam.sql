@@ -375,23 +375,42 @@ INSERT INTO satuan (kode,nama_satuan,status) VALUES
 ('bulan','bulan','aktif'),('hari','hari','aktif'),('meter','meter','aktif'),
 ('liter','liter','aktif'),('set','set','aktif'),('lembar','lembar','aktif'),('lainnya','lainnya','aktif');
 
-CREATE TABLE IF NOT EXISTS guru (
+CREATE TABLE IF NOT EXISTS jabatan (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   kode VARCHAR(20) NULL UNIQUE,
-  nip VARCHAR(50) NULL,
   nama VARCHAR(150) NOT NULL,
-  jabatan VARCHAR(100) NULL DEFAULT 'Guru',
-  mapel VARCHAR(100) NULL,
-  no_hp VARCHAR(20) NULL,
   status ENUM('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
-  keterangan TEXT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO guru (kode,nama,jabatan,mapel,status) VALUES
-('GRU-001','BUDI ASHARI','Guru','Umum','aktif'),
-('GRU-002','ASRORI','Guru','Umum','aktif')
+INSERT INTO jabatan (kode,nama,status) VALUES
+('JBT-001','Kepala Madrasah','aktif'),
+('JBT-002','Bendahara','aktif'),
+('JBT-003','Operator','aktif'),
+('JBT-004','Guru Kelas','aktif'),
+('JBT-005','Guru Mapel','aktif'),
+('JBT-006','Guru BK','aktif'),
+('JBT-007','Tata Usaha','aktif'),
+('JBT-008','Penjaga','aktif')
+ON DUPLICATE KEY UPDATE nama=VALUES(nama);
+
+CREATE TABLE IF NOT EXISTS guru (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  kode VARCHAR(20) NULL UNIQUE,
+  nuptk VARCHAR(50) NULL,
+  nama VARCHAR(150) NOT NULL,
+  jabatan_id INT UNSIGNED NULL,
+  jabatan VARCHAR(100) NULL DEFAULT 'Guru',
+  status ENUM('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (jabatan_id) REFERENCES jabatan(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO guru (kode,nama,jabatan,status) VALUES
+('GRU-001','BUDI ASHARI','Guru','aktif'),
+('GRU-002','ASRORI','Guru','aktif')
 ON DUPLICATE KEY UPDATE nama=VALUES(nama);
 
 INSERT INTO rekening (kode,nama_rekening,kelompok,jenis_belanja_id,keterangan,status) VALUES

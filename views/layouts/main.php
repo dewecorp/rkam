@@ -113,7 +113,7 @@ function ddify(scope){(scope||document).querySelectorAll('select').forEach(sel=>
 <nav class="flex-1 p-4 space-y-1.5 text-sm overflow-y-auto" id="nav">
 <a href="<?=BASE_URL?>" data-p="dashboard" class="navlink <?=($cur==='dashboard'?'active':'')?>"><i class="fa-solid fa-gauge w-5 text-center"></i> Dashboard</a>
 <?php if(in_array($role,['superadmin','operator'])):?>
-<?php $mitems=[['bidang','Bidang','fa-layer-group'],['sumber_dana','Sumber Dana','fa-sack-dollar'],['jenis_belanja','Jenis Belanja','fa-tags'],['satuan','Satuan','fa-ruler'],['rekening','Rekening','fa-book'],['kegiatan','Kegiatan','fa-list-check'],['guru','Guru','fa-chalkboard-user'],['tahun_anggaran','Tahun Anggaran','fa-calendar']]; $mcur=($_GET['tab']??$arg??''); $mopen=($cur==='master')?'':''; ?>
+<?php $mitems=[['bidang','Bidang','fa-layer-group'],['sumber_dana','Sumber Dana','fa-sack-dollar'],['jenis_belanja','Jenis Belanja','fa-tags'],['satuan','Satuan','fa-ruler'],['rekening','Rekening','fa-book'],['kegiatan','Kegiatan','fa-list-check'],['guru','Guru','fa-chalkboard-user'],['jabatan','Jabatan','fa-id-card'],['tahun_anggaran','Tahun Anggaran','fa-calendar']]; $mcur=($_GET['tab']??$arg??''); $mopen=($cur==='master')?'':''; ?>
 <div>
 <button type="button" onclick="toggleMaster()" class="navlink parent w-full text-left <?=($cur==='master'?'active':'')?>"><i class="fa-solid fa-database w-5 text-center"></i> <span>Master Data</span> <i id="mchev" class="fa-solid fa-chevron-down text-[10px] transition-transform"></i></button>
 <div id="msub" class="mt-1 ml-3 pl-2 border-l border-white/10 space-y-1 <?=($cur==='master'?'':'hidden')?>">
