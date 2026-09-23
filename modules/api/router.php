@@ -424,7 +424,7 @@ $before=trim($run('rev-parse HEAD'));
 $fetch=$run('fetch --prune origin main');
 $afterRemote=trim($run('rev-parse origin/main'));
 if(!preg_match('/^[0-9a-f]{40}$/',$afterRemote))Security::json(['ok'=>false,'msg'=>'Gagal mengambil versi terbaru. Coba lagi nanti.','details'=>[$clean($fetch)]]);
-if($afterRemote===$before){$curVer=Helper::setting($pdo,'sys_version',APP_VERSION);if(!preg_match('/^\d+\.\d+\.\d+$/',$curVer))$curVer=APP_VERSION;Security::json(['ok'=>true,'msg'=>'Sudah versi terbaru','before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7),'files'=>0,'details'=>[],'version'=>$curVer]);}
+if($afterRemote===$before){$curVer=Helper::setting($pdo,'sys_version',APP_VERSION);if(!preg_match('/^\d+\.\d+\.\d+$/',$curVer))$curVer=APP_VERSION;Logger::log($pdo,'update','sistem',null,['from'=>substr($before,0,7)],['to'=>$curVer,'files'=>0,'note'=>'sudah terbaru']);Security::json(['ok'=>true,'msg'=>'Sudah versi terbaru','before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7),'files'=>0,'details'=>[],'version'=>$curVer]);}
 $diffList=$run('diff --name-only '.escapeshellarg($before).' '.escapeshellarg($afterRemote));
 $files=$diffList==='' ? [] : explode("\n",$diffList);
 $files=array_values(array_filter(array_map('trim',$files)));
