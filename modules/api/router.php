@@ -402,6 +402,66 @@ if(!$id)Security::json(['ok'=>false,'msg'=>'Kegiatan wajib dipilih'],400);
 $i=$pdo->prepare("SELECT rs.sumber_dana_id AS id,s.nama_sumber_dana,rs.jumlah FROM rkam_sumber_dana rs JOIN sumber_dana s ON s.id=rs.sumber_dana_id WHERE rs.rkam_id=? ORDER BY s.nama_sumber_dana");$i->execute([$id]);
 Security::json(['ok'=>true,'data'=>$i->fetchAll()]);
 }
+case 'endpoint_save': {
+if(!in_array(Auth::role(),['superadmin','kepala_madrasah','bendahara']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
+foreach(['endpoint_simad_guru','endpoint_simad_key','api_secret_key'] as $k){
+if(isset($_POST[$k]))$pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES(?,?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$k,trim($_POST[$k])]);
+}
+Logger::log($pdo,'edit','pengaturan_endpoint',1);Security::json(['ok'=>true,'msg'=>'Pengaturan Endpoint berhasil disimpan']);
+}
+case 'endpoint_gen_key': {
+if(!in_array(Auth::role(),['superadmin','kepala_madrasah','bendahara']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
+$nk='rkam_sec_'.bin2hex(random_bytes(16));
+$pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES('api_secret_key',?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$nk]);
+Logger::log($pdo,'edit','api_key',1);Security::json(['ok'=>true,'key'=>$nk,'msg'=>'API Key berhasil diperbarui']);
+}
+case 'sync_simad_guru': {
+if(!in_array(Auth::role(),['superadmin','kepala_madrasah','bendahara','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
+$url=Helper::setting($pdo,'endpoint_simad_guru');$key=Helper::setting($pdo,'endpoint_simad_key');
+if(!$url)Security::json(['ok'=>false,'msg'=>'URL Endpoint SIMAD belum diisi']);
+$opts=['http'=>['method'=>'GET','header'=>"User-Agent: RKAM-Sync/1.0\r\n".($key?"X-API-KEY: $key\r\nAuthorization: Bearer $key\r\n":''),'timeout'=>15]];
+$json=@file_get_contents($url,false,stream_context_create($opts));
+if($json===false)Security::json(['ok'=>false,'msg'=>'Gagal menghubungi Endpoint SIMAD. Cek URL & jaringan.']);
+$res=json_decode($json,true);if(!$res)Security::json(['ok'=>false,'msg'=>'Respon SIMAD bukan JSON valid.']);
+$teachers=[];
+if(isset($res['data'])&&is_array($res['data']))$teachers=$res['data'];
+elseif(isset($res['guru'])&&is_array($res['guru']))$teachers=$res['guru'];
+elseif(isset($res['teachers'])&&is_array($res['teachers']))$teachers=$res['teachers'];
+elseif(isset($res[0])&&is_array($res[0]))$teachers=$res;
+if(!$teachers)Security::json(['ok'=>false,'msg'=>'Data guru dari SIMAD kosong.']);
+$ins=0;$upd=0;$jabCache=[];
+$getJab=function($nm) use ($pdo,&$jabCache){
+$nm=trim((string)$nm);if(!$nm)return [null,null];$k=strtolower($nm);if(isset($jabCache[$k]))return $jabCache[$k];
+$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE LOWER(nama)=? LIMIT 1");$s->execute([$k]);$r=$s->fetch();
+if($r){$jabCache[$k]=[(int)$r['id'],$r['nama']];return $jabCache[$k];}
+$kd=Helper::autoKode($pdo,'jabatan',$nm);
+$pdo->prepare("INSERT INTO jabatan(kode,nama,status) VALUES(?,?,'aktif')")->execute([$kd,$nm]);
+$id=(int)$pdo->lastInsertId();$jabCache[$k]=[$id,$nm];return $jabCache[$k];
+};
+foreach($teachers as $t){
+$nama=trim($t['nama']??$t['nama_guru']??$t['name']??'');if(!$nama)continue;
+$nuptk=trim($t['nuptk']??$t['nip']??'');if(!$nuptk)$nuptk=null;
+$kode=trim($t['kode']??'');if(!$kode)$kode=null;
+$jabRaw=trim($t['jabatan']??$t['nama_jabatan']??'');[$jid,$jnm]=$getJab($jabRaw);
+$st=strtolower(trim($t['status']??'aktif'));if(!in_array($st,['aktif','nonaktif']))$st='aktif';
+$ex=null;
+if($nuptk){$s=$pdo->prepare("SELECT id FROM guru WHERE nuptk=?");$s->execute([$nuptk]);$ex=$s->fetchColumn();}
+if(!$ex&&$kode){$s=$pdo->prepare("SELECT id FROM guru WHERE kode=?");$s->execute([$kode]);$ex=$s->fetchColumn();}
+if(!$ex){$s=$pdo->prepare("SELECT id FROM guru WHERE LOWER(nama)=?");$s->execute([strtolower($nama)]);$ex=$s->fetchColumn();}
+if($ex){
+$pdo->prepare("UPDATE guru SET nama=?,nuptk=COALESCE(?,nuptk),jabatan_id=COALESCE(?,jabatan_id),jabatan=COALESCE(?,jabatan),status=? WHERE id=?")->execute([$nama,$nuptk,$jid,$jnm,$st,$ex]);
+$upd++;
+}else{
+if(!$kode)$kode=Helper::autoKode($pdo,'guru',$nama);
+$pdo->prepare("INSERT INTO guru(kode,nama,nuptk,jabatan_id,jabatan,status) VALUES(?,?,?,?,?,?)")->execute([$kode,$nama,$nuptk,$jid,$jnm?:'Guru',$st]);
+$ins++;
+}
+}
+$at=date('Y-m-d H:i:s');
+$pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES('last_sync_simad',?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$at]);
+Logger::log($pdo,'impor','guru',null,null,['source'=>'SIMAD','inserted'=>$ins,'updated'=>$upd]);
+Security::json(['ok'=>true,'msg'=>"Sinkronisasi SIMAD berhasil: $ins data ditambahkan, $upd data diperbarui.",'inserted'=>$ins,'updated'=>$upd,'sync_at'=>$at]);
+}
 case 'sys_update': {
 if(Auth::role()!=='superadmin')Security::json(['ok'=>false,'msg'=>'No permission'],403);
 @set_time_limit(120);

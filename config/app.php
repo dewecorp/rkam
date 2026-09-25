@@ -1,6 +1,6 @@
 <?php
 define('APP_NAME','SIRKAM');
-define('APP_VERSION','1.0.0');
+define('APP_VERSION','1.0.1');
 if(!defined('BASE_URL')){
 $__sn=str_replace('\\','/',$_SERVER['SCRIPT_NAME']??'/index.php');
 $__bd=rtrim(str_replace('\\','/',dirname($__sn)),'/');

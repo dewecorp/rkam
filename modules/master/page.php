@@ -16,7 +16,10 @@ function cellVal($tab,$c,$r,$bidMap,$jbMap,$gruMap=[],$jabMap=[]){$v=$r[$c]??'';
 ?>
 <div class="flex flex-wrap items-center gap-2 mb-4 no-print">
 <div class="font-extrabold text-emerald-900">Master <?=$tabs[$tab]?></div>
-<?php if($tab==='guru'):?><button onclick="guruImportModal()" title="Impor Excel Guru" class="bg-blue-600 hover:bg-blue-700 text-white h-10 px-3 rounded-2xl text-sm shadow no-print"><i class="fa-solid fa-file-import mr-1"></i> Impor</button><?php endif;?>
+<?php if($tab==='guru'):?>
+<button onclick="guruImportModal()" title="Impor Excel Guru" class="bg-blue-600 hover:bg-blue-700 text-white h-10 px-3 rounded-2xl text-sm shadow no-print flex items-center gap-1"><i class="fa-solid fa-file-import"></i> Impor</button>
+<button onclick="syncGuruSimad()" title="Sinkronkan Data Guru dari SIMAD" class="bg-indigo-600 hover:bg-indigo-700 text-white h-10 px-3 rounded-2xl text-sm shadow no-print flex items-center gap-1"><i class="fa-solid fa-rotate text-xs"></i> Sinkron SIMAD</button>
+<?php endif;?>
 <button onclick="masterForm(0)" title="Tambah <?=$tabs[$tab]?>" class="ml-auto bg-emerald-700 hover:bg-emerald-800 text-white w-10 h-10 rounded-2xl text-sm shadow"><i class="fa-solid fa-plus"></i></button></div>
 <div class="bg-white rounded shadow overflow-auto">
 <?php if(!$rows):?><div class="p-10 text-center text-gray-500">Belum ada data.<br><button onclick="masterForm(0)" title="Tambah <?=$tabs[$tab]?>" class="mt-2 bg-emerald-700 hover:bg-emerald-800 text-white w-11 h-11 rounded-2xl shadow"><i class="fa-solid fa-plus"></i></button></div>
@@ -65,4 +68,16 @@ const fd=new FormData();fd.append('csrf_token',window.__CSRF||CSRF);fd.append('a
 try{const r=await fetch((window.__BASE||BASE)+'api/x',{method:'POST',body:fd});paint(90);const j=await r.json();paint(100);
 if(j.ok){Swal.fire({icon:'success',title:'Impor Selesai',html:'Berhasil: <b>'+j.inserted+'</b> • Dilewati: <b>'+j.skipped+'</b>'+(j.errors&&j.errors.length?'<div class="mt-2 text-left text-xs max-h-40 overflow-y-auto">'+j.errors.map(e=>'• '+e).join('<br>')+'</div>':''),confirmButtonText:'OK',confirmButtonColor:'#059669'}).then(()=>location.reload());}
 else{Swal.fire({icon:'error',title:'Impor Gagal',html:(j.msg||'Gagal')+(j.errors&&j.errors.length?'<div class="mt-2 text-left text-xs max-h-40 overflow-y-auto">'+j.errors.map(e=>'• '+e).join('<br>')+'</div>':''),confirmButtonColor:'#dc2626'});}}catch(e){paint(0);err('Gagal: '+e.message);}}
+async function syncGuruSimad(){
+Swal.fire({title:'Menghubungi SIMAD...',text:'Mengambil data guru dari Endpoint SIMAD.',didOpen:()=>Swal.showLoading(),allowOutsideClick:false});
+try{
+const j=await api('x',{act:'sync_simad_guru'});
+Swal.close();
+if(j.ok){
+Swal.fire({icon:'success',title:'Sinkronisasi Berhasil',html:`<b>${j.msg}</b><br><span class="text-xs text-gray-500">Waktu sinkron: ${j.sync_at}</span>`,confirmButtonColor:'#059669'}).then(()=>location.reload());
+}else{
+Swal.fire({icon:'error',title:'Sinkronisasi Gagal',text:j.msg||'Gagal sinkronisasi data dari SIMAD.',footer:'<a href="'+(window.__BASE||BASE)+'pengaturan?tab=endpoint" class="text-blue-600 underline text-xs font-bold">Atur URL Endpoint SIMAD di Pengaturan</a>'});
+}
+}catch(ex){Swal.close();err('Kesalahan koneksi sinkronisasi: '+ex.message);}
+}
 </script>

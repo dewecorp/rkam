@@ -4,8 +4,9 @@ $url=trim($_GET['url']??'',"/");
 if($url==='login'){require __DIR__.'/login.php';exit;}
 if($url==='logout'){require __DIR__.'/logout.php';exit;}
 if($url===''||$url==='index.php'){$url='dashboard';}
-Auth::requireLogin();
 $p=explode('/',$url);$page=$p[0];$arg=$p[1]??null;$arg2=$p[2]??null;
+if($page==='api'&&$arg==='v1'){require __DIR__.'/modules/api/v1.php';exit;}
+Auth::requireLogin();
 $content='';$title='Dashboard';
 try{
 switch($page){
