@@ -22,17 +22,12 @@ if (!$passedKey || !hash_equals($secKey, $passedKey)) {
     exit;
 }
 
-$endpoint = $p[2] ?? $arg2 ?? $_GET['action'] ?? 'guru';
+$endpoint = $p[2] ?? $arg2 ?? $_GET['action'] ?? 'rkam';
 if ($endpoint === 'export' && isset($p[3])) {
     $endpoint = $p[3];
 }
 
 switch ($endpoint) {
-    case 'guru':
-        $rows = $pdo->query("SELECT g.id, g.kode, g.nuptk, g.nama, g.jabatan_id, g.jabatan, g.status, g.created_at, g.updated_at FROM guru g ORDER BY g.nama")->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode(['ok' => true, 'total' => count($rows), 'data' => $rows]);
-        break;
-
     case 'rkam':
         $th = Helper::tahunAktif($pdo);
         $thId = (int)($_GET['tahun_id'] ?? $th['id'] ?? 0);
@@ -60,15 +55,9 @@ switch ($endpoint) {
         echo json_encode(['ok' => true, 'tahun_id' => $thId, 'total' => count($rows), 'data' => $rows]);
         break;
 
-    case 'madrasah':
-        $m = Helper::madrasah($pdo);
-        unset($m['logo']);
-        echo json_encode(['ok' => true, 'data' => $m]);
-        break;
-
     default:
         http_response_code(404);
-        echo json_encode(['ok' => false, 'msg' => 'Endpoint tidak ditemukan. Available: guru, rkam, realisasi, madrasah']);
+        echo json_encode(['ok' => false, 'msg' => 'Endpoint tidak ditemukan. Available: rkam, realisasi']);
         break;
 }
 exit;

@@ -79,13 +79,25 @@ if($t==='jenis_belanja'&&$d['nama']===null)Security::json(['ok'=>false,'msg'=>'N
 if($t==='satuan'&&$d['nama_satuan']===null)Security::json(['ok'=>false,'msg'=>'Nama Satuan wajib']);
 if($t==='rekening'&&($d['kode']===null||$d['nama_rekening']===null))Security::json(['ok'=>false,'msg'=>'Kode & Nama Rekening wajib']);
 if($t==='guru'&&($d['kode']===null||$d['nama']===null))Security::json(['ok'=>false,'msg'=>'Kode & Nama Guru wajib']);
-if($t==='guru'&&!empty($d['jabatan_id'])){$jj=$pdo->prepare("SELECT nama FROM jabatan WHERE id=? AND status='aktif'");$jj->execute([(int)$d['jabatan_id']]);$jn=$jj->fetchColumn();if($jn)$d['jabatan']=$jn;else Security::json(['ok'=>false,'msg'=>'Jabatan tidak valid']);}elseif($t==='guru'){$d['jabatan']=$d['jabatan']??null;}
+if($t==='guru'){
+$rawJab=$_POST['jabatan_ids']??$_POST['jabatan_id']??null;
+if(is_string($rawJab)&&str_starts_with(trim($rawJab),'['))$rawJab=json_decode($rawJab,true);
+if(is_string($rawJab)&&str_contains($rawJab,','))$rawJab=explode(',',$rawJab);
+if($rawJab!==null&&!is_array($rawJab))$rawJab=[$rawJab];
+$jabIds=$rawJab===null?null:array_values(array_unique(array_filter(array_map('intval',(array)$rawJab))));
+if($jabIds!==null){
+if(!$jabIds){$d['jabatan_id']=null;$d['jabatan']=null;}
+else{$ph=rtrim(str_repeat('?,',count($jabIds)),',');$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE id IN ($ph) AND status='aktif' ORDER BY nama");$s->execute($jabIds);$vj=$s->fetchAll();if(!$vj)Security::json(['ok'=>false,'msg'=>'Jabatan tidak valid']);$d['jabatan_id']=(int)$vj[0]['id'];$d['jabatan']=implode(', ',array_column($vj,'nama'));}
+}
+elseif(!empty($d['jabatan_id'])){$jj=$pdo->prepare("SELECT nama FROM jabatan WHERE id=? AND status='aktif'");$jj->execute([(int)$d['jabatan_id']]);$jn=$jj->fetchColumn();if($jn)$d['jabatan']=$jn;else Security::json(['ok'=>false,'msg'=>'Jabatan tidak valid']);}
+else{$d['jabatan']=$d['jabatan']??null;}
+}
 if($t==='jabatan'&&$d['nama']===null)Security::json(['ok'=>false,'msg'=>'Nama Jabatan wajib']);
 try{
 if($id>0){$set=implode(',',array_map(fn($c)=>"$c=?",array_keys($d)));$s=$pdo->prepare("UPDATE $t SET $set WHERE id=?");$s->execute([...array_values($d),$id]);Logger::log($pdo,'edit',$t,$id,null,$d);}
 else{$s=$pdo->prepare("INSERT INTO $t(".implode(',',array_keys($d)).") VALUES(".rtrim(str_repeat('?,',count($d)),',').")");$s->execute(array_values($d));$id=(int)$pdo->lastInsertId();Logger::log($pdo,'tambah',$t,$id,null,$d);}
 if($t==='kegiatan'){$n=Helper::syncKegiatanToRkam($pdo,$id);Security::json(['ok'=>true,'msg'=>$n>0?"Tersimpan + sinkron $n RKAM draft":"Tersimpan"]);}
-if($t==='guru'){try{$g=$pdo->prepare("SELECT nama,nuptk FROM guru WHERE id=?");$g->execute([$id]);if($gr=$g->fetch()){$pdo->prepare("UPDATE madrasah SET nama_kepala=?,nip_kepala=? WHERE kepala_guru_id=?")->execute([$gr['nama'],$gr['nuptk']??'',$id]);$pdo->prepare("UPDATE madrasah SET nama_bendahara=?,nip_bendahara=? WHERE bendahara_guru_id=?")->execute([$gr['nama'],$gr['nuptk']??'',$id]);}}catch(Exception $e){error_log('sync pimpinan: '.$e->getMessage());}}
+if($t==='guru'){try{if(isset($jabIds)&&$jabIds!==null){Helper::setGuruJabatan($pdo,$id,$jabIds);}$g=$pdo->prepare("SELECT nama,nuptk FROM guru WHERE id=?");$g->execute([$id]);if($gr=$g->fetch()){$pdo->prepare("UPDATE madrasah SET nama_kepala=?,nip_kepala=? WHERE kepala_guru_id=?")->execute([$gr['nama'],$gr['nuptk']??'',$id]);$pdo->prepare("UPDATE madrasah SET nama_bendahara=?,nip_bendahara=? WHERE bendahara_guru_id=?")->execute([$gr['nama'],$gr['nuptk']??'',$id]);}}catch(Exception $e){error_log('sync pimpinan: '.$e->getMessage());}}
 }catch(Exception $ex){error_log('master_save: '.$ex->getMessage());$msg='Gagal simpan';if(stripos($ex->getMessage(),'Duplicate')!==false)$msg='Kode sudah dipakai';Security::json(['ok'=>false,'msg'=>$msg]);}
 Security::json(['ok'=>true,'msg'=>'Tersimpan']);
 }
@@ -95,6 +107,54 @@ $t=$_POST['table']??'';$id=(int)($_POST['id']??0);
 if(!in_array($t,['bidang','sumber_dana','jenis_belanja','satuan','rekening','kegiatan','guru','jabatan','tahun_anggaran']))Security::json(['ok'=>false,'msg'=>'Invalid'],400);
 try{$pdo->prepare("DELETE FROM $t WHERE id=?")->execute([$id]);Logger::log($pdo,'hapus',$t,$id);}catch(Exception $ex){Security::json(['ok'=>false,'msg'=>'Data dipakai relasi lain']);}
 Security::json(['ok'=>true]);
+}
+case 'guru_bulk_delete': {
+if(!in_array(Auth::role(),['superadmin','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
+$raw=$_POST['ids']??'[]';$ids=is_array($raw)?$raw:json_decode((string)$raw,true);
+if(!is_array($ids))$ids=array_filter(array_map('trim',explode(',',(string)$raw)));
+$ids=array_values(array_unique(array_filter(array_map('intval',(array)$ids))));
+if(!$ids)Security::json(['ok'=>false,'msg'=>'Pilih minimal 1 guru'],400);
+$ok=0;$fail=0;$del=$pdo->prepare("DELETE FROM guru WHERE id=?");foreach($ids as $gid){try{$del->execute([$gid]);if($del->rowCount()>0)$ok++;else $fail++;}catch(Exception $ex){$fail++;}}
+Logger::log($pdo,'hapus','guru',null,null,['ids'=>$ids,'deleted'=>$ok,'failed'=>$fail]);
+Security::json(['ok'=>true,'msg'=>"Berhasil hapus $ok guru".($fail?" ($fail gagal, dipakai relasi lain)":''),'deleted'=>$ok,'failed'=>$fail]);
+}
+case 'guru_bulk_update': {
+if(!in_array(Auth::role(),['superadmin','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
+$raw=$_POST['ids']??'[]';$ids=is_array($raw)?$raw:json_decode((string)$raw,true);
+if(!is_array($ids))$ids=array_filter(array_map('trim',explode(',',(string)$raw)));
+$ids=array_values(array_unique(array_filter(array_map('intval',(array)$ids))));
+if(!$ids)Security::json(['ok'=>false,'msg'=>'Pilih minimal 1 guru'],400);
+$rawJab=$_POST['jabatan_ids']??$_POST['jabatan_id']??null;
+if(is_string($rawJab)&&trim($rawJab)==='__skip__')$rawJab=null;
+if(is_string($rawJab)&&str_contains($rawJab,','))$rawJab=explode(',',$rawJab);
+if(is_string($rawJab)&&$rawJab!==''&&str_starts_with(trim($rawJab),'['))$rawJab=json_decode($rawJab,true);
+if($rawJab!==null&&!is_array($rawJab))$rawJab=[$rawJab];
+$picks=$rawJab===null?null:array_values(array_unique(array_filter(array_map('intval',(array)$rawJab))));
+$mode=strtolower(trim($_POST['jabatan_mode']??($picks===null?'skip':'set')));
+if(!in_array($mode,['skip','set','add','clear']))$mode='set';
+if($mode==='skip')$picks=null;
+if($mode==='clear')$picks=[];
+$st=strtolower(trim($_POST['status']??''));if(!in_array($st,['aktif','nonaktif','']))Security::json(['ok'=>false,'msg'=>'Status invalid'],400);
+if($picks===null&&$st==='')Security::json(['ok'=>false,'msg'=>'Pilih Jabatan / Status dulu'],400);
+if($mode==='set'&&$picks!==null&&!$picks&&$st==='')Security::json(['ok'=>false,'msg'=>'Centang minimal 1 jabatan atau pilih mode lain'],400);
+if($mode==='add'&&(!$picks)&&$st==='')Security::json(['ok'=>false,'msg'=>'Centang minimal 1 jabatan untuk ditambah'],400);
+$n=0;foreach($ids as $gid){
+$target=null;
+if($picks!==null){
+if($mode==='add'){$target=array_values(array_unique(array_merge(Helper::guruJabatanIds($pdo,$gid),$picks)));}
+else{$target=$picks;}
+}
+$set=[];$par=[];
+if($target!==null){
+$vj=[];if($target){$ph=rtrim(str_repeat('?,',count($target)),',');$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE id IN ($ph) AND status='aktif' ORDER BY nama");$s->execute($target);$vj=$s->fetchAll();if(!$vj&&$mode!=='clear')Security::json(['ok'=>false,'msg'=>'Jabatan tidak valid'],400);}
+$pid=$vj?(int)$vj[0]['id']:null;$jstr=$vj?implode(', ',array_column($vj,'nama')):null;
+$set[]='jabatan_id=?';$par[]=$pid;$set[]='jabatan=?';$par[]=$jstr;
+Helper::setGuruJabatan($pdo,$gid,$target);
+}
+if($st!==''){$set[]='status=?';$par[]=$st;}
+if(!$set)continue;$par[]=$gid;$s=$pdo->prepare("UPDATE guru SET ".implode(',',$set)." WHERE id=?");$s->execute($par);$n+=$s->rowCount();}
+Logger::log($pdo,'edit','guru',null,null,['ids'=>$ids,'jabatan_mode'=>$mode,'jabatan_ids'=>$picks,'status'=>$st,'updated'=>$n]);
+Security::json(['ok'=>true,'msg'=>"Berhasil update $n guru",'updated'=>$n]);
 }
 case 'guru_import': {
 if(!in_array(Auth::role(),['superadmin','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
@@ -131,16 +191,21 @@ if($nama===''){$skip++;continue;}
 $kode=trim((string)($ci['kode']>=0?($r[$ci['kode']]??''):''));if($kode===''||$kode==='-')$kode=null;
 $nuptk=trim((string)($ci['nuptk']>=0?($r[$ci['nuptk']]??''):''));if($nuptk===''||$nuptk==='-')$nuptk=null;
 if($nuptk!==null&&isset($nuptkSeen[$nuptk])){$skip++;$errs[]='Baris '.($ri+1).': NUPTK '.$nuptk.' sudah ada — dilewati';continue;}
-$jabRaw=trim((string)($ci['jabatan']>=0?($r[$ci['jabatan']]??''):''));$jid=null;$jnm=null;
+$jabRaw=trim((string)($ci['jabatan']>=0?($r[$ci['jabatan']]??''):''));$mjIds=[];$mjNames=[];
 if($jabRaw!==''){
-if(ctype_digit($jabRaw)){$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE id=? AND status='aktif'");$s->execute([(int)$jabRaw]);$jr=$s->fetch();if($jr){$jid=(int)$jr['id'];$jnm=$jr['nama'];}else{$skip++;$errs[]='Baris '.($ri+1).': jabatan ID '.$jabRaw.' tidak valid';continue;}}
-else{try{[$jid,$jnm]=$jabByName($jabRaw);}catch(Exception $ex){$skip++;$errs[]='Baris '.($ri+1).': jabatan gagal ('.$jabRaw.')';continue;}}
+foreach(Helper::splitJabatanRaw($jabRaw) as $one){
+if(ctype_digit($one)){$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE id=? AND status='aktif'");$s->execute([(int)$one]);$jr=$s->fetch();if($jr){$mjIds[]=(int)$jr['id'];$mjNames[]=$jr['nama'];}else{$skip++;$errs[]='Baris '.($ri+1).': jabatan ID '.$one.' tidak valid';continue 2;}}
+else{try{[$ojid,$ojnm]=$jabByName($one);$mjIds[]=$ojid;$mjNames[]=$ojnm;}catch(Exception $ex){$skip++;$errs[]='Baris '.($ri+1).': jabatan gagal ('.$one.')';continue 2;}}
 }
+$mjIds=array_values(array_unique($mjIds));$mjNames=array_values(array_unique($mjNames));
+}
+$jid=$mjIds?$mjIds[0]:null;$jnm=$mjNames?implode(', ',$mjNames):null;
 $st=strtolower(trim((string)($ci['status']>=0?($r[$ci['status']]??'aktif'):'aktif')));if(!in_array($st,['aktif','nonaktif']))$st='aktif';
 try{
 if($kode!==null){$c=$pdo->prepare("SELECT id FROM guru WHERE kode=?");$c->execute([$kode]);if($c->fetch()){$skip++;$errs[]='Baris '.($ri+1).': kode '.$kode.' sudah dipakai';continue;}}
 else{$kode=Helper::autoKode($pdo,'guru',$nama);}
 $pdo->prepare("INSERT INTO guru(kode,nama,nuptk,jabatan_id,jabatan,status) VALUES(?,?,?,?,?,?)")->execute([$kode,$nama,$nuptk,$jid,$jnm,$st]);
+$nid=(int)$pdo->lastInsertId();if($mjIds)Helper::setGuruJabatan($pdo,$nid,$mjIds);
 if($nuptk!==null)$nuptkSeen[$nuptk]=1;
 $ins++;
 }catch(Exception $ex){$skip++;$errs[]='Baris '.($ri+1).': gagal simpan ('.$nama.')';}
@@ -419,48 +484,77 @@ case 'sync_simad_guru': {
 if(!in_array(Auth::role(),['superadmin','kepala_madrasah','bendahara','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
 $url=Helper::setting($pdo,'endpoint_simad_guru');$key=Helper::setting($pdo,'endpoint_simad_key');
 if(!$url)Security::json(['ok'=>false,'msg'=>'URL Endpoint SIMAD belum diisi']);
-$opts=['http'=>['method'=>'GET','header'=>"User-Agent: RKAM-Sync/1.0\r\n".($key?"X-API-KEY: $key\r\nAuthorization: Bearer $key\r\n":''),'timeout'=>15]];
-$json=@file_get_contents($url,false,stream_context_create($opts));
-if($json===false)Security::json(['ok'=>false,'msg'=>'Gagal menghubungi Endpoint SIMAD. Cek URL & jaringan.']);
-$res=json_decode($json,true);if(!$res)Security::json(['ok'=>false,'msg'=>'Respon SIMAD bukan JSON valid.']);
-$teachers=[];
-if(isset($res['data'])&&is_array($res['data']))$teachers=$res['data'];
-elseif(isset($res['guru'])&&is_array($res['guru']))$teachers=$res['guru'];
-elseif(isset($res['teachers'])&&is_array($res['teachers']))$teachers=$res['teachers'];
-elseif(isset($res[0])&&is_array($res[0]))$teachers=$res;
-if(!$teachers)Security::json(['ok'=>false,'msg'=>'Data guru dari SIMAD kosong.']);
-$ins=0;$upd=0;$jabCache=[];
-$getJab=function($nm) use ($pdo,&$jabCache){
-$nm=trim((string)$nm);if(!$nm)return [null,null];$k=strtolower($nm);if(isset($jabCache[$k]))return $jabCache[$k];
-$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE LOWER(nama)=? LIMIT 1");$s->execute([$k]);$r=$s->fetch();
-if($r){$jabCache[$k]=[(int)$r['id'],$r['nama']];return $jabCache[$k];}
-$kd=Helper::autoKode($pdo,'jabatan',$nm);
-$pdo->prepare("INSERT INTO jabatan(kode,nama,status) VALUES(?,?,'aktif')")->execute([$kd,$nm]);
-$id=(int)$pdo->lastInsertId();$jabCache[$k]=[$id,$nm];return $jabCache[$k];
+$hdr="User-Agent: RKAM-Sync/1.0\r\n".($key?"X-API-KEY: $key\r\nAuthorization: Bearer $key\r\n":'');
+$fetch=function($u) use ($hdr){
+$opts=['http'=>['method'=>'GET','header'=>$hdr,'timeout'=>15]];
+$js=@file_get_contents($u,false,stream_context_create($opts));
+if($js===false)return [null,'Gagal menghubungi '.$u];
+$rs=json_decode($js,true);if(!$rs)return [null,'Respon bukan JSON valid ('.$u.')'];
+return [$rs,null];
 };
+$pickList=function($res){
+if(!is_array($res))return [];
+if(isset($res[0])&&is_array($res[0]))return $res;
+foreach(['data','guru','teachers','items','list','results','rows','jabatan'] as $k){if(isset($res[$k])&&is_array($res[$k])){if(isset($res[$k][0])&&is_array($res[$k][0]))return $res[$k];if(!empty($res[$k]))return [$res[$k]];}}
+if(isset($res['data'])&&is_array($res['data'])){foreach(['data','list','rows'] as $k2){if(isset($res['data'][$k2])&&is_array($res['data'][$k2])&&isset($res['data'][$k2][0]))return $res['data'][$k2];}}
+return [];
+};
+$jabIns=0;$jabUpd=0;$jabCache=[];
+$upJab=function($kode,$nama,$st='aktif') use ($pdo,&$jabCache,&$jabIns,&$jabUpd){
+$nama=trim((string)$nama);if($nama==='')return [null,null];
+$kode=trim((string)($kode??''));if($kode===''||$kode==='-')$kode=null;
+$st=strtolower(trim((string)$st));if(!in_array($st,['aktif','nonaktif']))$st='aktif';
+$ck=strtolower($nama);if(isset($jabCache[$ck]))return $jabCache[$ck];
+$ex=null;
+if($kode){$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE kode=? LIMIT 1");$s->execute([$kode]);$ex=$s->fetch();}
+if(!$ex){$s=$pdo->prepare("SELECT id,nama,kode FROM jabatan WHERE LOWER(nama)=? LIMIT 1");$s->execute([$ck]);$ex=$s->fetch();}
+if($ex){$eid=(int)$ex['id'];$pdo->prepare("UPDATE jabatan SET nama=?,status=? WHERE id=?")->execute([$nama,$st,$eid]);if(!empty($ex['kode'])&&$kode&&$ex['kode']!==$kode){try{$pdo->prepare("UPDATE jabatan SET kode=? WHERE id=?")->execute([$kode,$eid]);}catch(Exception $e){}}$jabCache[$ck]=[$eid,$nama];$jabUpd++;return $jabCache[$ck];}
+if(!$kode)$kode=Helper::autoKode($pdo,'jabatan',$nama);
+try{$pdo->prepare("INSERT INTO jabatan(kode,nama,status) VALUES(?,?,'aktif')")->execute([$kode,$nama]);}catch(Exception $e){$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE LOWER(nama)=? LIMIT 1");$s->execute([$ck]);$r=$s->fetch();if($r){$jabCache[$ck]=[(int)$r['id'],$r['nama']];return $jabCache[$ck];}throw $e;}
+$nid=(int)$pdo->lastInsertId();$jabCache[$ck]=[$nid,$nama];$jabIns++;return $jabCache[$ck];
+};
+$getJab=function($nm) use ($upJab){return $upJab(null,$nm,'aktif');};
+[$res,$err]=$fetch($url);
+if($err)Security::json(['ok'=>false,'msg'=>$err.' Cek URL & jaringan.']);
+$teachers=$pickList($res);
+if(!$teachers)Security::json(['ok'=>false,'msg'=>'Data guru dari SIMAD kosong.']);
+$ins=0;$upd=0;
 foreach($teachers as $t){
 $nama=trim($t['nama']??$t['nama_guru']??$t['name']??'');if(!$nama)continue;
 $nuptk=trim($t['nuptk']??$t['nip']??'');if(!$nuptk)$nuptk=null;
 $kode=trim($t['kode']??'');if(!$kode)$kode=null;
-$jabRaw=trim($t['jabatan']??$t['nama_jabatan']??'');[$jid,$jnm]=$getJab($jabRaw);
+$jabList=[];foreach(['jabatan_list','jabatans','jabatan_ids','roles','positions'] as $jk){if(isset($t[$jk])&&is_array($t[$jk]))$jabList=array_merge($jabList,$t[$jk]);}
+$jabRaw=$t['jabatan']??$t['nama_jabatan']??$t['jabatan_nama']??'';
+if(is_array($jabRaw))$jabList=array_merge($jabList,$jabRaw);else $jabList=array_merge($jabList,Helper::splitJabatanRaw($jabRaw));
+$mjIds=[];$mjNames=[];
+foreach($jabList as $one){
+$one=is_array($one)?($one['nama']??$one['name']??$one['jabatan']??$one['id']??''):$one;
+$one=trim((string)$one);if($one==='')continue;
+if(ctype_digit($one)){$s=$pdo->prepare("SELECT id,nama FROM jabatan WHERE id=? LIMIT 1");$s->execute([(int)$one]);if($jr=$s->fetch()){$mjIds[]=(int)$jr['id'];$mjNames[]=$jr['nama'];continue;}}
+[$ojid,$ojnm]=$getJab($one);if($ojid){$mjIds[]=$ojid;$mjNames[]=$ojnm;}
+}
+$mjIds=array_values(array_unique($mjIds));$mjNames=array_values(array_unique($mjNames));
+$jid=$mjIds?$mjIds[0]:null;$jnm=$mjNames?implode(', ',$mjNames):null;
 $st=strtolower(trim($t['status']??'aktif'));if(!in_array($st,['aktif','nonaktif']))$st='aktif';
 $ex=null;
 if($nuptk){$s=$pdo->prepare("SELECT id FROM guru WHERE nuptk=?");$s->execute([$nuptk]);$ex=$s->fetchColumn();}
 if(!$ex&&$kode){$s=$pdo->prepare("SELECT id FROM guru WHERE kode=?");$s->execute([$kode]);$ex=$s->fetchColumn();}
 if(!$ex){$s=$pdo->prepare("SELECT id FROM guru WHERE LOWER(nama)=?");$s->execute([strtolower($nama)]);$ex=$s->fetchColumn();}
 if($ex){
-$pdo->prepare("UPDATE guru SET nama=?,nuptk=COALESCE(?,nuptk),jabatan_id=COALESCE(?,jabatan_id),jabatan=COALESCE(?,jabatan),status=? WHERE id=?")->execute([$nama,$nuptk,$jid,$jnm,$st,$ex]);
+if($mjIds){$pdo->prepare("UPDATE guru SET nama=?,nuptk=COALESCE(?,nuptk),status=? WHERE id=?")->execute([$nama,$nuptk,$st,$ex]);Helper::setGuruJabatan($pdo,$ex,$mjIds);}
+else{$pdo->prepare("UPDATE guru SET nama=?,nuptk=COALESCE(?,nuptk),status=? WHERE id=?")->execute([$nama,$nuptk,$st,$ex]);}
 $upd++;
 }else{
 if(!$kode)$kode=Helper::autoKode($pdo,'guru',$nama);
 $pdo->prepare("INSERT INTO guru(kode,nama,nuptk,jabatan_id,jabatan,status) VALUES(?,?,?,?,?,?)")->execute([$kode,$nama,$nuptk,$jid,$jnm?:'Guru',$st]);
+$nid=(int)$pdo->lastInsertId();if($mjIds)Helper::setGuruJabatan($pdo,$nid,$mjIds);
 $ins++;
 }
 }
 $at=date('Y-m-d H:i:s');
 $pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES('last_sync_simad',?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$at]);
-Logger::log($pdo,'impor','guru',null,null,['source'=>'SIMAD','inserted'=>$ins,'updated'=>$upd]);
-Security::json(['ok'=>true,'msg'=>"Sinkronisasi SIMAD berhasil: $ins data ditambahkan, $upd data diperbarui.",'inserted'=>$ins,'updated'=>$upd,'sync_at'=>$at]);
+Logger::log($pdo,'impor','guru',null,null,['source'=>'SIMAD','inserted'=>$ins,'updated'=>$upd,'jab_ins'=>$jabIns,'jab_upd'=>$jabUpd]);
+Security::json(['ok'=>true,'msg'=>"Sinkronisasi SIMAD berhasil: $ins guru baru, $upd guru update, $jabIns jabatan baru, $jabUpd jabatan update.",'inserted'=>$ins,'updated'=>$upd,'jab_ins'=>$jabIns,'jab_upd'=>$jabUpd,'sync_at'=>$at]);
 }
 case 'sys_update': {
 if(Auth::role()!=='superadmin')Security::json(['ok'=>false,'msg'=>'No permission'],403);

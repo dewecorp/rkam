@@ -89,12 +89,6 @@ function guruSel($t,$n,$v,$guru){$h='<div><label class="text-xs font-bold text-e
     <?php
     $endpoints = [
       [
-        'title' => 'Endpoint Data Guru (Keluar)',
-        'desc' => 'Menyediakan daftar data guru dari RKAM ke aplikasi luar.',
-        'url' => $dynBase . 'api/v1/export/guru?api_key=' . $secKey,
-        'icon' => 'fa-chalkboard-user'
-      ],
-      [
         'title' => 'Endpoint Data RKAM (Keluar)',
         'desc' => 'Menyediakan rincian anggaran & item RKAM tahun aktif ke aplikasi luar.',
         'url' => $dynBase . 'api/v1/export/rkam?api_key=' . $secKey,
@@ -105,12 +99,6 @@ function guruSel($t,$n,$v,$guru){$h='<div><label class="text-xs font-bold text-e
         'desc' => 'Menyediakan data transaksi realisasi belanja ke aplikasi luar.',
         'url' => $dynBase . 'api/v1/export/realisasi?api_key=' . $secKey,
         'icon' => 'fa-money-bill-wave'
-      ],
-      [
-        'title' => 'Endpoint Identitas Madrasah (Keluar)',
-        'desc' => 'Menyediakan profil & identitas madrasah ke aplikasi luar.',
-        'url' => $dynBase . 'api/v1/export/madrasah?api_key=' . $secKey,
-        'icon' => 'fa-building-columns'
       ],
     ];
     ?>

@@ -403,11 +403,19 @@ CREATE TABLE IF NOT EXISTS guru (
   nuptk VARCHAR(50) NULL,
   nama VARCHAR(150) NOT NULL,
   jabatan_id INT UNSIGNED NULL,
-  jabatan VARCHAR(100) NULL DEFAULT 'Guru',
+  jabatan VARCHAR(255) NULL DEFAULT 'Guru',
   status ENUM('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (jabatan_id) REFERENCES jabatan(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS guru_jabatan (
+  guru_id INT UNSIGNED NOT NULL,
+  jabatan_id INT UNSIGNED NOT NULL,
+  PRIMARY KEY (guru_id, jabatan_id),
+  FOREIGN KEY (guru_id) REFERENCES guru(id) ON DELETE CASCADE,
+  FOREIGN KEY (jabatan_id) REFERENCES jabatan(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO guru (kode,nama,jabatan,status) VALUES
