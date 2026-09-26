@@ -27,6 +27,7 @@ $n=$s->fetch();
 if($n){$pdo->prepare("UPDATE notifications SET is_read=1 WHERE id=?")->execute([$id]);}
 $target=BASE_URL.'rkam';
 if($n&&$n['modul']==='rkam'&&$n['record_id'])$target=BASE_URL.'rkam/detail/'.$n['record_id'];
+if($n&&$n['modul']==='system_update')$target=BASE_URL.'?update=1';
 Security::json(['ok'=>true,'target'=>$target]);
 }
 case 'notif_read_all': {
@@ -555,6 +556,21 @@ $at=date('Y-m-d H:i:s');
 $pdo->prepare("INSERT INTO app_settings(skey,svalue) VALUES('last_sync_simad',?) ON DUPLICATE KEY UPDATE svalue=VALUES(svalue)")->execute([$at]);
 Logger::log($pdo,'impor','guru',null,null,['source'=>'SIMAD','inserted'=>$ins,'updated'=>$upd,'jab_ins'=>$jabIns,'jab_upd'=>$jabUpd]);
 Security::json(['ok'=>true,'msg'=>"Sinkronisasi SIMAD berhasil: $ins guru baru, $upd guru update, $jabIns jabatan baru, $jabUpd jabatan update.",'inserted'=>$ins,'updated'=>$upd,'jab_ins'=>$jabIns,'jab_upd'=>$jabUpd,'sync_at'=>$at]);
+}
+case 'sys_check_update': {
+if(Auth::role()!=='superadmin')Security::json(['ok'=>true,'has_update'=>false]);
+$root=realpath(__DIR__.'/../..');if(!$root||!is_dir($root.'/.git'))Security::json(['ok'=>true,'has_update'=>false]);
+$git='git -C '.escapeshellarg($root).' ';
+$run=function($args) use ($git){return trim((string)(@shell_exec($git.$args.' 2>&1')??''));};
+$before=trim($run('rev-parse HEAD'));
+$fetch=$run('fetch --prune origin main');
+$afterRemote=trim($run('rev-parse origin/main'));
+$hasUpdate=(preg_match('/^[0-9a-f]{40}$/',$afterRemote)&&$afterRemote!==$before);
+if($hasUpdate){
+$ck=$pdo->query("SELECT COUNT(*) FROM notifications WHERE modul='system_update' AND is_read=0")->fetchColumn();
+if(!$ck){Logger::notify($pdo,'Pembaruan Sistem Tersedia','Versi baru aplikasi SIRKAM telah tersedia di server pusat. Klik notifikasi ini untuk memperbarui.','superadmin',null,'system_update');}
+}
+Security::json(['ok'=>true,'has_update'=>$hasUpdate,'before'=>substr($before,0,7),'after'=>substr($afterRemote,0,7)]);
 }
 case 'sys_update': {
 if(Auth::role()!=='superadmin')Security::json(['ok'=>false,'msg'=>'No permission'],403);

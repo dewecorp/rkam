@@ -160,7 +160,7 @@ function ddify(scope){(scope||document).querySelectorAll('select').forEach(sel=>
 <div id="userDrop" class="hidden absolute right-0 top-full pt-2 z-50" onmouseenter="showUser()" onmouseleave="hideUser()">
 <div class="w-56 bg-white text-slate-800 border border-emerald-100 rounded-2xl shadow-2xl overflow-hidden">
 <div class="px-4 py-3 border-b border-emerald-100 flex items-center gap-3"><span class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0"><?=$initial?></span><div class="min-w-0"><div class="font-bold text-sm truncate"><?=Security::e($u['nama']??'')?></div><div class="text-[11px] text-gray-500 truncate">@<?=Security::e($u['username']??'')?></div></div></div>
-<div class="p-2"><?php if($role==='superadmin'):?><button type="button" onclick="askUpdate()" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-emerald-700 hover:bg-emerald-50"><i class="fa-solid fa-cloud-arrow-down w-4 text-center"></i> Pembaruan Sistem</button><?php endif;?><button type="button" onclick="askLogout()" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50"><i class="fa-solid fa-right-from-bracket w-4 text-center"></i> Logout</button></div></div></div></div></div></header>
+<div class="p-2"><?php if($role==='superadmin'):?><button type="button" onclick="askUpdate()" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-emerald-700 hover:bg-emerald-50"><i class="fa-solid fa-cloud-arrow-down w-4 text-center"></i> <span>Pembaruan Sistem</span><span id="updMenuBadge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full ml-auto">NEW</span></button><?php endif;?><button type="button" onclick="askLogout()" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50"><i class="fa-solid fa-right-from-bracket w-4 text-center"></i> Logout</button></div></div></div></div></div></header>
 <main class="p-4 md:p-8 flex-1 max-w-7xl w-full mx-auto">
 <div class="mb-4"><div class="font-extrabold text-xl text-slate-800"><?=Security::e($title??'')?></div><div class="text-xs text-emerald-700 font-medium">Rencana Kegiatan & Anggaran Madrasah</div></div>
 <?=$content??''?></main>
@@ -196,5 +196,22 @@ let j=null,jerr='';try{const r=await fetch((window.__BASE||BASE)+'api/x',{method
 if(timer)clearInterval(timer);const e1=document.getElementById('upBar'),e2=document.getElementById('upTxt'),e3=document.getElementById('upStep');if(e1)e1.style.width='100%';if(e2)e2.innerText='100%';if(e3)e3.innerText='Selesai';await new Promise(r=>setTimeout(r,400));
 if(j&&j.ok){const det=(j.details||[]).slice(0,8).map(d=>'• '+d).join('<br>');await Swal.fire({icon:'success',title:'Pembaruan berhasil',html:'Versi: <b>v'+(j.version||'-')+'</b><br>Berkas diperbarui: <b>'+(j.files||0)+'</b>'+(det?'<div class="mt-2 text-left text-xs max-h-40 overflow-y-auto">'+det+'</div>':'')+'<div class="mt-2 text-xs text-gray-500">Backup: '+(j.backup||'-')+'</div>',confirmButtonText:'Muat Ulang',confirmButtonColor:'#059669'});location.reload();}
 else{const det=(j&&j.details||[]).slice(0,10).map(d=>'• '+d).join('<br>');await Swal.fire({icon:'error',title:'Pembaruan gagal',html:((j&&j.msg)||jerr||'Gagal')+(det?'<div class="mt-2 text-left text-xs max-h-40 overflow-y-auto">'+det+'</div>':'')+'<div class="mt-2 text-xs text-gray-500">Sistem tidak diubah. Coba lagi nanti.</div>',confirmButtonColor:'#dc2626'});}}
+(function(){
+  if(location.search.indexOf('update=1')!==-1){
+    try{history.replaceState({},'',location.pathname);}catch(e){}
+    setTimeout(askUpdate,500);
+  }
+  if('<?=$role?>'==='superadmin'){
+    setTimeout(async()=>{
+      try{
+        const j=await api('x',{act:'sys_check_update'});
+        if(j&&j.ok&&j.has_update){
+          const b=document.getElementById('updMenuBadge');
+          if(b)b.classList.remove('hidden');
+        }
+      }catch(e){}
+    },1200);
+  }
+})();
 </script>
 </body></html>
