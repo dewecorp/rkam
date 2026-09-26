@@ -1,7 +1,13 @@
 <?php
 $m=Helper::madrasah($pdo);
 $app=Helper::setting($pdo,'app_name','SIRKAM');$km=Helper::setting($pdo,'kode_madrasah','MI-SF');
-$guru=$pdo->query("SELECT g.id,g.nama,g.nuptk,j.nama AS jabatan_nama FROM guru g LEFT JOIN jabatan j ON j.id=g.jabatan_id WHERE g.status='aktif' ORDER BY g.nama")->fetchAll();
+$guru=$pdo->query("SELECT g.id,g.nama,g.nuptk,j.nama AS jabatan_nama,g.jabatan FROM guru g LEFT JOIN jabatan j ON j.id=g.jabatan_id WHERE g.status='aktif' ORDER BY g.nama")->fetchAll();
+foreach($guru as &$gg){$jn=Helper::guruJabatanNames($pdo,$gg['id']);if($jn)$gg['jabatan_nama']=implode(', ',$jn);}unset($gg);
+
+$autoKepalaId=$m['kepala_guru_id']??null;
+$autoBendaharaId=$m['bendahara_guru_id']??null;
+if(!$autoKepalaId){foreach($guru as $g){$j=strtolower(($g['jabatan_nama']??'').' '.($g['jabatan']??''));if(str_contains($j,'kepala')||str_contains($j,'kamad')){$autoKepalaId=$g['id'];if(empty($m['nama_kepala'])){$m['nama_kepala']=$g['nama'];$m['nip_kepala']=$g['nuptk']??'';}break;}}}
+if(!$autoBendaharaId){foreach($guru as $g){$j=strtolower(($g['jabatan_nama']??'').' '.($g['jabatan']??''));if(str_contains($j,'bendahara')){$autoBendaharaId=$g['id'];if(empty($m['nama_bendahara'])){$m['nama_bendahara']=$g['nama'];$m['nip_bendahara']=$g['nuptk']??'';}break;}}}
 
 $secKey=Helper::setting($pdo,'api_secret_key');
 if(!$secKey){
@@ -37,14 +43,34 @@ function guruSel($t,$n,$v,$guru){$h='<div><label class="text-xs font-bold text-e
 <div><label class="text-xs font-bold text-emerald-900">Alamat</label><textarea name="alamat" placeholder="Jl. Pendidikan No. 10" class="w-full border rounded p-2 mt-1"><?=Security::e($m['alamat']??'')?></textarea></div>
 <div class="grid grid-cols-2 gap-2"><?=lab('Desa','desa',$m['desa']??'')?><?=lab('Kecamatan','kecamatan',$m['kecamatan']??'')?><?=lab('Kabupaten','kabupaten',$m['kabupaten']??'')?><?=lab('Provinsi','provinsi',$m['provinsi']??'')?></div>
 <div class="grid grid-cols-2 gap-2"><?=lab('Kode Pos','kode_pos',$m['kode_pos']??'','44191')?><?=lab('Telepon','telepon',$m['telepon']??'')?><?=lab('Email','email',$m['email']??'')?><?=lab('Nama Aplikasi','app_name',$app)?></div>
-<div class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3"><div class="font-bold text-emerald-900 text-[13px]">Pimpinan (Sinkron Data Guru)</div><div class="text-[11px] text-gray-500 mb-2">Pilih guru — nama + NIP/NUPTK terisi otomatis dari Master Guru. Tersimpan sebagai relasi, ikut berubah bila data guru diubah.</div>
-<div class="grid grid-cols-2 gap-2"><?=guruSel('Kepala Madrasah','kepala_guru_id',$m['kepala_guru_id']??'',$guru)?><?=guruSel('Bendahara','bendahara_guru_id',$m['bendahara_guru_id']??'',$guru)?></div>
-<div class="grid grid-cols-2 gap-2 mt-2">
-<div><label class="text-xs font-bold text-emerald-900">Nama Kepala (Otomatis)</label><input name="nama_kepala" id="nama_kepala" readonly value="<?=Security::e($m['nama_kepala']??'')?>" class="w-full border rounded p-2 mt-1 bg-gray-50"></div>
-<div><label class="text-xs font-bold text-emerald-900">NIP/NUPTK Kepala (Otomatis)</label><input name="nip_kepala" id="nip_kepala" readonly value="<?=Security::e($m['nip_kepala']??'')?>" class="w-full border rounded p-2 mt-1 bg-gray-50"></div>
-<div><label class="text-xs font-bold text-emerald-900">Nama Bendahara (Otomatis)</label><input name="nama_bendahara" id="nama_bendahara" readonly value="<?=Security::e($m['nama_bendahara']??'')?>" class="w-full border rounded p-2 mt-1 bg-gray-50"></div>
-<div><label class="text-xs font-bold text-emerald-900">NIP/NUPTK Bendahara (Otomatis)</label><input name="nip_bendahara" id="nip_bendahara" readonly value="<?=Security::e($m['nip_bendahara']??'')?>" class="w-full border rounded p-2 mt-1 bg-gray-50"></div>
-</div></div>
+<div class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5 space-y-2">
+<div class="font-bold text-emerald-900 text-[13px] flex items-center gap-1.5"><i class="fa-solid fa-user-tie text-emerald-600"></i> Pimpinan Madrasah (Sinkron Data Guru)</div>
+<div class="text-[11px] text-gray-500">Pilih Kepala & Bendahara dari Master Guru (otomatis terdeteksi dari jabatan). Nama dan NIP otomatis sinkron.</div>
+<div class="grid grid-cols-2 gap-2">
+  <div>
+    <label class="text-xs font-bold text-emerald-900">Kepala Madrasah</label>
+    <select name="kepala_guru_id" class="w-full border rounded p-2 mt-1 text-xs">
+      <option value="">- Pilih Kepala Madrasah -</option>
+      <?php foreach($guru as $g): ?>
+        <option value="<?=$g['id']?>" <?=((string)$autoKepalaId===(string)$g['id']?'selected':'')?>>
+          <?=Security::e($g['nama'].($g['jabatan_nama']?' ('.$g['jabatan_nama'].')':''))?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+  <div>
+    <label class="text-xs font-bold text-emerald-900">Bendahara</label>
+    <select name="bendahara_guru_id" class="w-full border rounded p-2 mt-1 text-xs">
+      <option value="">- Pilih Bendahara -</option>
+      <?php foreach($guru as $g): ?>
+        <option value="<?=$g['id']?>" <?=((string)$autoBendaharaId===(string)$g['id']?'selected':'')?>>
+          <?=Security::e($g['nama'].($g['jabatan_nama']?' ('.$g['jabatan_nama'].')':''))?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+</div>
+</div>
 <div class="grid grid-cols-2 gap-2"><?=lab('Kode Madrasah','kode_madrasah',$km,'MI-SF')?></div>
 <div><label class="text-xs font-bold text-emerald-900">Logo Sekolah (JPG/PNG/WebP, max 2 MB)</label>
 <div class="flex items-center gap-3 mt-1">
@@ -174,10 +200,6 @@ function copyTxt(txt, label){
     ok((label||'Endpoint')+' berhasil disalin!');
   });
 }
-
-function syncGuru(sel){const o=sel.options[sel.selectedIndex];const nm=o?o.dataset.nama||'':'';const nip=o?o.dataset.nip||'':'';
-if(sel.name==='kepala_guru_id'){document.getElementById('nama_kepala').value=nm;document.getElementById('nip_kepala').value=nip;}
-if(sel.name==='bendahara_guru_id'){document.getElementById('nama_bendahara').value=nm;document.getElementById('nip_bendahara').value=nip;}}
 
 function previewLogo(inp){if(!inp.files||!inp.files[0])return;const f=inp.files[0];if(f.size>2*1024*1024){err('Logo > 2 MB');inp.value='';return;}const box=document.getElementById('logoBox');if(!box)return;const url=URL.createObjectURL(f);box.innerHTML=`<img id="logoPrev" src="${url}" class="w-16 h-16 rounded-2xl object-contain bg-emerald-50 border border-emerald-200 p-1">`;}
 
