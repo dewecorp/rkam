@@ -1,5 +1,5 @@
 <?php
-$rk=$pdo->query("SELECT k.id,k.kode_kegiatan,k.nomor_dokumen,k.nama_kegiatan,k.total_anggaran,k.status,(SELECT COALESCE(SUM(jumlah),0) FROM realisasi WHERE rkam_id=k.id) AS jml_real FROM rkam k ORDER BY k.id DESC LIMIT 200")->fetchAll();
+$rk=$pdo->query("SELECT k.id,k.kode_kegiatan,k.nomor_dokumen,k.nama_kegiatan,k.total_anggaran,k.status,(SELECT COALESCE(SUM(jumlah),0) FROM realisasi WHERE rkam_id=k.id) AS jml_real FROM rkam k WHERE NOT EXISTS (SELECT 1 FROM realisasi r WHERE r.rkam_id=k.id) ORDER BY k.id DESC LIMIT 200")->fetchAll();
 $sum=$pdo->query("SELECT * FROM sumber_dana WHERE status='aktif'")->fetchAll();
 $s=$pdo->query("SELECT r.*,k.nama_kegiatan FROM realisasi r JOIN rkam k ON k.id=r.rkam_id ORDER BY r.tanggal_transaksi DESC, r.id DESC LIMIT 200")->fetchAll();
 $can=in_array(Auth::role(),['superadmin','bendahara']);
@@ -20,7 +20,7 @@ function realForm(id,d){d=d||{tanggal_transaksi:'<?=date('Y-m-d')?>',volume:1,ha
 let h=`<div class="flex justify-between items-center mb-3"><b>${id?'Edit':'Tambah'} Realisasi</b><button type="button" onclick="closeModal()" title="Tutup" class="w-8 h-8 rounded-full bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div>
 <form onsubmit="realSave(event,${id})" class="text-sm grid md:grid-cols-2 gap-2" enctype="multipart/form-data" id="fReal">
 <div class="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/70 p-2.5 text-[11px] text-slate-600">Alur: <b>1 Kegiatan RKAM</b> → <b>2 Tanggal</b> → <b>3 Uraian+Volume+Harga</b> → <b>4 Bukti</b> → Simpan. Realisasi wajib setelah RKAM disetujui. Nomor bukti & rekening otomatis ikut kegiatan terpilih.</div>
-<div class="md:col-span-2"><label class="text-xs font-bold">1. Kegiatan RKAM *</label><select name="rkam_id" id="rlKeg" onchange="chgKeg()" class="w-full border rounded p-2">${RK.map(k=>{const sisa=(k.total_anggaran||0)-(k.jml_real||0);return `<option value="${k.id}" ${d.rkam_id==k.id?'selected':''}>${k.kode_kegiatan?k.kode_kegiatan+' — ':''}${k.nama_kegiatan} (${k.status}, sisa ${rp(sisa)})</option>`;}).join('')}</select></div>
+<div class="md:col-span-2"><label class="text-xs font-bold">1. Kegiatan RKAM *</label><select name="rkam_id" id="rlKeg" onchange="chgKeg()" class="w-full border rounded p-2">${!RK.length?'<option value="">- Belum ada kegiatan -</option>':RK.map(k=>{const sisa=(k.total_anggaran||0)-(k.jml_real||0);return `<option value="${k.id}" ${d.rkam_id==k.id?'selected':''}>${k.kode_kegiatan?k.kode_kegiatan+' — ':''}${k.nama_kegiatan} (${k.status}, sisa ${rp(sisa)})</option>`;}).join('')}</select></div>
 <div id="rkInfo" class="md:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-2.5 text-xs"></div>
 <div><label class="text-xs font-bold">Tanggal *</label><input type="date" name="tanggal_transaksi" value="${d.tanggal_transaksi||''}" class="w-full border rounded p-2"></div>
 <div><label class="text-xs font-bold">Nomor Bukti (Kode Kegiatan)</label><select name="nomor_bukti" id="rlBukti" onchange="syncRekByBukti()" class="w-full border rounded p-2"></select></div>

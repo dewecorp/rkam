@@ -442,7 +442,8 @@ $pdo->exec("SET FOREIGN_KEY_CHECKS=1");
 Logger::log($pdo,'restore','database');Security::json(['ok'=>true,'statements'=>$ok]);
 }
 case 'master_opt': {
-Security::json(['ok'=>true,'data'=>['rekening'=>$pdo->query("SELECT * FROM rekening WHERE status='aktif' LIMIT 200")->fetchAll(),'satuan'=>$pdo->query("SELECT * FROM satuan WHERE status='aktif'")->fetchAll(),'sumber'=>$pdo->query("SELECT * FROM sumber_dana WHERE status='aktif'")->fetchAll(),'kegiatan'=>$pdo->query("SELECT k.*,b.nama_bidang,s.nama_satuan AS satuan_nama,g.nama AS guru_nama FROM kegiatan k LEFT JOIN bidang b ON b.id=k.bidang_id LEFT JOIN satuan s ON s.id=k.satuan_id LEFT JOIN guru g ON g.id=k.guru_id WHERE k.status='aktif' ORDER BY k.nama_kegiatan LIMIT 200")->fetchAll()]]);
+    $tid=(int)($_POST['tahun_id']??(Helper::tahunAktif($pdo)['id']??0));
+    Security::json(['ok'=>true,'data'=>['rekening'=>$pdo->query("SELECT * FROM rekening WHERE status='aktif' LIMIT 200")->fetchAll(),'satuan'=>$pdo->query("SELECT * FROM satuan WHERE status='aktif'")->fetchAll(),'sumber'=>$pdo->query("SELECT * FROM sumber_dana WHERE status='aktif'")->fetchAll(),'kegiatan'=>$pdo->query("SELECT k.*,b.nama_bidang,s.nama_satuan AS satuan_nama,g.nama AS guru_nama FROM kegiatan k LEFT JOIN bidang b ON b.id=k.bidang_id LEFT JOIN satuan s ON s.id=k.satuan_id LEFT JOIN guru g ON g.id=k.guru_id WHERE k.status='aktif' AND k.id NOT IN (SELECT kegiatan_id FROM rkam WHERE kegiatan_id IS NOT NULL AND tahun_id=$tid) ORDER BY k.nama_kegiatan LIMIT 200")->fetchAll()]]);
 }
 case 'kode_preview': {
 if(!in_array(Auth::role(),['superadmin','operator']))Security::json(['ok'=>false,'msg'=>'No permission'],403);
