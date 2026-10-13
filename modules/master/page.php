@@ -31,7 +31,6 @@ function cellVal($tab,$c,$r,$bidMap,$jbMap,$gruMap=[],$jabMap=[]){$v=$r[$c]??'';
 <span id="guruSelCount" class="text-xs font-bold text-emerald-900">0 dipilih</span>
 <button onclick="guruBulkEditModal()" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-xl"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit Massal</button>
 <button onclick="guruBulkDelete()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-xl"><i class="fa-solid fa-trash-can mr-1"></i>Hapus Massal</button>
-<span class="text-[11px] text-gray-500 ml-auto">Urut A–Z by nama. Centang baris untuk aksi massal.</span>
 </div>
 <?php endif;?>
 <div class="bg-white rounded shadow overflow-auto">
